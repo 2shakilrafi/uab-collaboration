@@ -1,0 +1,552 @@
+---
+
+---
+
+## Read Data
+
+```{r}
+library(tidyverse)
+
+data <- read_csv("w2-avg-sleep-data.csv")
+```
+
+## Descriptive Statistics
+
+```{r}
+data |>
+  psych::describe()
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(readr)
+
+# Load the data
+df <- read_csv("w2-avg-sleep-data.csv")
+df <- df %>% select(-SID)
+
+# Pastel palette
+pastel_colors <- c("#AEC6CF", "#FFB347", "#B39EB5", "#77DD77", "#F49AC2")
+
+# Loop through columns and plot
+for (i in seq_along(df)) {
+  col_name <- names(df)[i]
+  color <- pastel_colors[(i - 1) %% length(pastel_colors) + 1]
+  
+  p <- ggplot(df, aes_string(x = col_name)) +
+    geom_density(fill = color, alpha = 0.7, color = "black", linewidth = 0.5) +  # Eyeliner, baby
+    labs(title = paste("Density Plot of", col_name)) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      axis.title.y = element_blank()
+    )
+  
+  print(p)
+}
+```
+
+```{r}
+shapiro_results <- df |>
+  summarise(across(everything(), ~ list(shapiro.test(.x)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "test") |>
+  mutate(
+    statistic = map_dbl(test, ~ .x$statistic),
+    p_value = map_dbl(test, ~ .x$p.value)
+  ) |>
+  select(variable, statistic, p_value)
+
+shapiro_results
+```
+
+```{r}
+library(tidyr)
+
+corr <- cor(df)
+
+corr_df <- as.data.frame(as.table(corr))
+
+ggplot(corr_df, aes(Var1, Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#d0d1e6", mid = "#f7f7f7", high = "#1c9099", midpoint = 0) +
+  theme_minimal() +
+  labs(title = "Correlation Heatmap", x = "", y = "") +
+  coord_fixed()
+```
+
+```{r}
+pastel_points <- c("#FBB4AE", "#B3CDE3", "#CCEBC5", "#DECBE4")
+pastel_lines <- c("#FDBE85", "#A6CEE3", "#B2DF8A", "#CAB2D6")
+
+# Generate all unique variable pairs
+pairs <- combn(names(df), 2, simplify = FALSE)
+
+# Loop through pairs and make pastel scatter plots
+for (i in seq_along(pairs)) {
+  pair <- pairs[[i]]
+  x_var <- pair[1]
+  y_var <- pair[2]
+  
+  # Correlation stuff
+  test <- cor.test(df[[x_var]], df[[y_var]])
+  r_val <- round(test$estimate, 2)
+  p_val <- signif(test$p.value, 2)
+  label <- paste0("r = ", r_val, ", p = ", p_val)
+  
+  # Pick pastel colors
+  point_color <- pastel_points[(i - 1) %% length(pastel_points) + 1]
+  line_color <- pastel_lines[(i - 1) %% length(pastel_lines) + 1]
+  
+  # Plot
+  p <- ggplot(df, aes_string(x = x_var, y = y_var)) +
+    geom_point(alpha = 0.7, color = point_color, size = 2.5) +
+    geom_smooth(method = "lm", se = TRUE, color = line_color, fill = line_color, alpha = 0.3) +
+    annotate("text",
+             x = Inf, y = -Inf,
+             label = label,
+             hjust = 1.1, vjust = -0.5,
+             size = 5, fontface = "italic") +
+    labs(
+      title = paste("Scatterplot of", y_var, "vs", x_var),
+      x = x_var,
+      y = y_var
+    ) +
+    theme_minimal(base_size = 15)
+  
+  print(p)
+}
+```
+
+## Supervised Models
+
+### XGBoost
+
+```{r}
+library(tidymodels)
+library(vip)
+library(ggplot2)
+library(dplyr)
+library(purrr)
+library(SHAPforxgboost)
+set.seed(42)
+
+# Load and prepare the data
+df <- read.csv("w2-avg-sleep-data.csv") %>%
+  select(-SID)
+
+targets <- names(df)
+
+# Function to build and tune model for a given target
+run_model <- function(target, data) {
+  rec <- recipe(as.formula(paste(target, "~ .")), data = data) %>%
+    step_normalize(all_predictors())
+
+  xgb_spec <- boost_tree(
+    trees = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune(),
+    sample_size = tune(),
+    mtry = tune()
+  ) %>%
+    set_engine("xgboost") %>%
+    set_mode("regression")
+
+  wf <- workflow() %>%
+    add_model(xgb_spec) %>%
+    add_recipe(rec)
+
+  folds <- vfold_cv(data, v = 5)
+
+  grid_vals <- grid_latin_hypercube(
+    trees(),
+    tree_depth(),
+    learn_rate(),
+    loss_reduction(),
+    sample_size = sample_prop(),
+    finalize(mtry(), data %>% select(-all_of(target))),
+    size = 15
+  )
+
+  tuned <- tune_grid(
+    wf,
+    resamples = folds,
+    grid = grid_vals,
+    metrics = metric_set(rmse, rsq),
+    control = control_grid(save_pred = TRUE)
+  )
+
+  best <- select_best(tuned, metric = "rmse")
+
+  final_wf <- finalize_workflow(wf, best)
+  final_fit <- fit(final_wf, data = data)
+
+  # Training set R²
+  preds_train <- predict(final_fit, data) %>%
+    bind_cols(data %>% select(!!target))
+  colnames(preds_train) <- c("prediction", "truth")
+  rsq_train <- rsq(preds_train, truth = truth, estimate = prediction) %>%
+    pull(.estimate)
+
+  # Cross-validated R²
+  best_config <- best %>% select(-.config)
+  tuned_metrics <- collect_predictions(tuned) %>%
+    inner_join(best_config, by = colnames(best_config)) %>%
+    group_by(id) %>%
+    rsq(truth = !!sym(target), estimate = .pred) %>%
+    summarise(cv_rsq = mean(.estimate))
+
+  rsq_cv <- mean(tuned_metrics$cv_rsq)
+
+  # Feature importance (normalized gain)
+  imp <- final_fit %>%
+    pull_workflow_fit() %>%
+    vip::vi(type = "gain") %>%
+    mutate(
+      NormalizedGain = Importance / sum(Importance),
+      Target = target
+    )
+
+  list(
+    target = target,
+    rmse = show_best(tuned, metric = "rmse", n = 1),
+    rsq_train = rsq_train,
+    rsq_cv = rsq_cv,
+    workflow = final_wf,
+    fit = final_fit,
+    importance = imp
+  )
+}
+
+# Run model for each target
+results <- map(targets, ~ run_model(.x, df))
+
+# Combine and plot normalized importance
+importance_df <- bind_rows(map(results, "importance"))
+
+ggplot(importance_df, aes(x = reorder(Variable, NormalizedGain), y = NormalizedGain, fill = Target)) +
+  geom_col(position = position_dodge()) +
+  coord_flip() +
+  facet_wrap(~ Target, scales = "free") +
+  theme_minimal() +
+  labs(
+    title = "Normalized XGBoost Feature Importance (Gain)",
+    x = "Features", y = "Normalized Gain"
+  )
+
+# Print best RMSEs + R²s
+walk(results, function(res) {
+  cat("\nTarget:", res$target, "\n")
+  print(res$rmse)
+  cat("R² (Train):", round(res$rsq_train, 4), "\n")
+  cat("R² (Cross-validated):", round(res$rsq_cv, 4), "\n")
+})
+
+```
+
+### GLM
+
+```{r}
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+library(purrr)
+library(broom)
+
+set.seed(42)
+
+# Load and prepare the data
+df <- read.csv("w2-avg-sleep-data.csv") %>%
+  select(-SID)
+
+targets <- names(df)
+
+# Function to run GLM model for a given target
+run_glm_model <- function(target, data) {
+  rec <- recipe(as.formula(paste(target, "~ .")), data = data) %>%
+    step_normalize(all_predictors())
+
+  glm_spec <- linear_reg() %>%
+    set_engine("lm") %>%
+    set_mode("regression")
+
+  wf <- workflow() %>%
+    add_model(glm_spec) %>%
+    add_recipe(rec)
+
+  folds <- vfold_cv(data, v = 5, repeats = 3)
+
+  res <- fit_resamples(
+    wf,
+    resamples = folds,
+    metrics = metric_set(rmse, rsq),
+    control = control_resamples(save_pred = TRUE)
+  )
+
+  final_fit <- fit(wf, data = data)
+
+  # Training set R²
+  preds_train <- predict(final_fit, data) %>%
+    bind_cols(data %>% select(!!target))
+  colnames(preds_train) <- c("prediction", "truth")
+  rsq_train <- rsq(preds_train, truth = truth, estimate = prediction) %>%
+    pull(.estimate)
+
+  # Cross-validated R²
+  rsq_cv <- collect_metrics(res) %>%
+    filter(.metric == "rsq") %>%
+    summarise(cv_rsq = mean(mean)) %>%
+    pull(cv_rsq)
+
+  # Get coefficients
+  coefs <- tidy(final_fit) %>%
+    filter(term != "(Intercept)") %>%
+    mutate(
+      Target = target,
+      term = gsub("`", "", term)  # Clean up variable names
+    )
+
+  list(
+    target = target,
+    rsq_train = rsq_train,
+    rsq_cv = rsq_cv,
+    workflow = wf,
+    fit = final_fit,
+    coefficients = coefs
+  )
+}
+
+# Run model for each target
+results_glm <- map(targets, ~ run_glm_model(.x, df))
+
+# Print R²s
+walk(results_glm, function(res) {
+  cat("\nTarget:", res$target, "\n")
+  cat("R² (Train):", round(res$rsq_train, 4), "\n")
+  cat("R² (Cross-validated):", round(res$rsq_cv, 4), "\n")
+})
+
+# Combine coefficients for plotting
+coef_df <- bind_rows(map(results_glm, "coefficients"))
+
+# Plot standardized coefficients
+ggplot(coef_df, aes(x = reorder(term, estimate), y = estimate, fill = Target)) +
+  geom_col(position = position_dodge()) +
+  coord_flip() +
+  facet_wrap(~ Target, scales = "free") +
+  theme_minimal() +
+  labs(
+    title = "Standardized Regression Coefficients (GLM)",
+    x = "Features", y = "Coefficient (Standardized)"
+  )
+
+```
+
+## Unsupervised Models
+
+### PCA+K-MEANS
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(cluster)
+
+set.seed(42)
+
+# Load and normalize the data
+df <- read_csv("w2-avg-sleep-data.csv") %>%
+  select(-SID)
+
+norm_recipe <- recipe(~., data = df) %>%
+  step_normalize(all_predictors()) %>%
+  prep()
+
+df_norm <- bake(norm_recipe, new_data = NULL)
+
+# PCA
+pca <- prcomp(df_norm, center = TRUE, scale. = FALSE)
+pca_data <- as_tibble(pca$x)
+
+# Elbow method for k = 1 to 10
+elbow_df <- tibble(k = 1:10) %>%
+  mutate(
+    kmeans = map(k, ~ kmeans(pca_data[, 1:2], centers = .x, nstart = 10)),
+    tot_withinss = map_dbl(kmeans, ~ .x$tot.withinss)
+  )
+
+# Plot elbow method
+ggplot(elbow_df, aes(x = k, y = tot_withinss)) +
+  geom_line() +
+  geom_point() +
+  theme_minimal() +
+  labs(title = "Elbow Method (PCA-reduced data)",
+       x = "Number of Clusters (k)",
+       y = "Total Within-Cluster SS")
+
+# Choose k (manually from elbow plot, e.g. 3)
+k_opt <- 3
+final_kmeans <- kmeans(pca_data[, 1:2], centers = k_opt, nstart = 25)
+
+# Add cluster labels to PCA data
+pca_clustered <- pca_data %>%
+  select(PC1, PC2) %>%
+  mutate(cluster = as.factor(final_kmeans$cluster))
+
+# Plot clusters in PCA space
+ggplot(pca_clustered, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point(size = 3, alpha = 0.8) +
+  theme_minimal() +
+  labs(title = paste("k-Means Clustering on PCA (k =", k_opt, ")"),
+       x = "PC1", y = "PC2")
+
+```
+
+```{r}
+df_clustered <- df_norm %>%
+  mutate(cluster = as.factor(final_kmeans$cluster))
+
+```
+
+```{r}
+library(ggplot2)
+library(ggthemes) # optional for nice fonts/colors
+
+# Assuming df_clustered and df_clustered_long are already defined
+df_clustered_long <- df_clustered %>%
+  pivot_longer(-cluster, names_to = "variable", values_to = "value")
+
+# Pastel palette
+pastel_palette <- c("#A8DADC", "#F4A261", "#E5989B", "#B5E48C", "#9DB4C0", "#FDCB9E")
+
+ggplot(df_clustered_long, aes(x = cluster, y = value, fill = cluster)) +
+  geom_violin(alpha = 0.6, color = NA, scale = "width", trim = FALSE) +
+  geom_jitter(aes(color = cluster), width = 0.15, size = 1.3, alpha = 0.5, show.legend = FALSE) +
+  facet_wrap(~ variable, scales = "free_y") +
+  scale_fill_manual(values = pastel_palette) +
+  scale_color_manual(values = pastel_palette) +
+  theme_minimal(base_size = 14) +
+  theme(
+    strip.text = element_text(face = "bold", size = 12),
+    legend.position = "none"
+  ) +
+  labs(
+    title = "Cluster Profiles Across Variables (Standardized)",
+    x = "Cluster",
+    y = "Standardized Value"
+  )
+
+
+```
+
+```{r}
+df_clustered %>%
+  group_by(cluster) %>%
+  summarise(across(everything(), list(mean = mean, sd = sd)))
+
+
+```
+
+### UMAP+HDBSCAN
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(umap)
+library(dbscan)
+
+set.seed(42)
+
+# Load and normalize the data
+df <- read_csv("w2-avg-sleep-data.csv") %>%
+  select(-SID)
+
+norm_recipe <- recipe(~., data = df) %>%
+  step_normalize(all_predictors()) %>%
+  prep()
+
+df_norm <- bake(norm_recipe, new_data = NULL)
+
+# Run UMAP (nonlinear dimensionality reduction)
+umap_result <- umap(df_norm, n_neighbors = 15, min_dist = 0.1)
+umap_df <- as_tibble(umap_result$layout) %>%
+  rename(UMAP1 = V1, UMAP2 = V2)
+
+# HDBSCAN clustering on UMAP space
+hdb <- hdbscan(umap_df, minPts = 12)  # minPts = density sensitivity
+
+# Add cluster labels
+umap_df <- umap_df %>%
+  mutate(cluster = as.factor(hdb$cluster))
+
+# Plot UMAP clusters
+ggplot(umap_df, aes(x = UMAP1, y = UMAP2, color = cluster)) +
+  geom_point(size = 3, alpha = 0.8) +
+  theme_minimal(base_size = 14) +
+  labs(title = "UMAP + HDBSCAN Clustering",
+       x = "UMAP 1", y = "UMAP 2")
+
+```
+
+```{r}
+library(tidyverse)
+
+# Assuming `df_norm` is your normalized data
+# And `umap_df$cluster` is your final clustering result
+
+# Combine cluster labels with normalized data
+df_clustered <- df_norm %>%
+  mutate(cluster = umap_df$cluster)
+
+# Get summary stats per cluster
+cluster_summary <- df_clustered %>%
+  pivot_longer(-cluster, names_to = "variable", values_to = "value") %>%
+  group_by(cluster, variable) %>%
+  summarise(
+    mean = mean(value),
+    sd = sd(value),
+    .groups = "drop"
+  ) %>%
+  arrange(cluster, variable)
+
+# Optional: pivot wider to see everything in a big table
+cluster_summary_wide <- cluster_summary %>%
+  pivot_wider(
+    names_from = variable,
+    values_from = c(mean, sd),
+    names_glue = "{variable}_{.value}"
+  )
+
+# View the summary
+print(cluster_summary_wide, n = Inf)
+
+```
+
+```{r}
+library(tidyverse)
+
+# Combine cluster labels with normalized data
+df_clustered <- df_norm %>%
+  mutate(cluster = umap_df$cluster)
+
+# Get variable names (excluding the cluster label)
+vars <- names(df_clustered)[names(df_clustered) != "cluster"]
+
+# Loop through variables and generate violin plots
+for (v in vars) {
+  p <- ggplot(df_clustered, aes(x = cluster, y = .data[[v]], fill = cluster)) +
+    geom_violin(trim = FALSE, alpha = 0.7, color = NA) +
+    geom_jitter(width = 0.15, size = 1.2, alpha = 0.4, show.legend = FALSE) +
+    scale_fill_brewer(palette = "Pastel1") +
+    theme_minimal(base_size = 14) +
+    labs(
+      title = paste("Violin Plot of", v, "by Cluster"),
+      x = "Cluster",
+      y = paste("Standardized", v)
+    )
+
+  print(p)
+}
+
+```

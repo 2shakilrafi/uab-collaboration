@@ -1,0 +1,283 @@
+---
+
+---
+
+## Read Data
+
+```{r}
+library(tidyverse)
+data <- read_csv("w2-physical-activity.csv")
+```
+
+## EDA
+
+```{r}
+data |> 
+  select(where(is.numeric)) |>
+  psych::describe()
+```
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(readr)
+
+# Read the dataset
+df <- read_csv("w2-physical-activity.csv")
+
+# Remove non-relevant columns
+df_clean <- df %>% select(-Subject, -Filename, -Epoch)
+
+# Select only numeric columns
+numeric_df <- df_clean %>% select(where(is.numeric))
+
+# Loop through numeric columns and display density plots
+for (col_name in colnames(numeric_df)) {
+  p <- ggplot(numeric_df, aes_string(x = col_name)) +
+    geom_density(fill = "steelblue", alpha = 0.6) +
+    labs(title = paste("Density Plot of", col_name),
+         x = col_name,
+         y = "Density") +
+    theme_minimal()
+
+  print(p)
+}
+```
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(readr)
+
+# Load the dataset
+df <- read_csv("w2-physical-activity.csv")
+
+# Drop non-numeric columns
+df_clean <- df %>% select(-Subject, -Filename, -Epoch)
+
+# Select only numeric columns
+numeric_df <- df_clean %>% select(where(is.numeric))
+
+# Apply Shapiro-Wilk test and store results
+shapiro_results <- map_dfr(names(numeric_df), function(var) {
+  values <- numeric_df[[var]]
+  if (length(unique(values)) < 3) {
+    tibble(Variable = var, W = NA, p_value = NA, Note = "Too few unique values")
+  } else {
+    test <- shapiro.test(values)
+    tibble(Variable = var, W = round(test$statistic, 4), p_value = round(test$p.value, 4), Note = NA)
+  }
+})
+
+shapiro_results
+```
+
+```{r}
+# Load the data
+df <- read_csv("w2-physical-activity.csv")
+
+# Remove irrelevant columns
+df_clean <- df %>%
+  select(-Subject, -Filename, -Epoch)
+
+# Ensure Age is a factor (for grouping on x-axis and coloring)
+df_clean <- df_clean %>%
+  mutate(Age = as.factor(Age))
+
+# Select numeric columns excluding Age itself
+numeric_vars <- df_clean %>%
+  select(where(is.numeric))
+
+# Loop through numeric variables and generate violin plots grouped by Age
+for (var in names(numeric_vars)) {
+  p <- ggplot(df_clean, aes(x = Age, y = .data[[var]], fill = Age)) +
+    geom_violin(alpha = 0.7) +
+    geom_jitter(width = 0.2, alpha = 0.2) + 
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(title = paste("Violin Plot of", var, "by Age"),
+         x = "Age",
+         y = var) +
+    theme_minimal() +
+    theme(legend.position = "none")
+
+  print(p)
+}
+```
+
+```{r, fig.width=12, fig.height=12}
+library(tidyr)
+library(ggplot2)
+library(readr)
+library(dplyr)
+
+read_csv("w2-physical-activity.csv") |>
+  select(-Subject, -Filename, -Epoch, -Gender) |>
+  select(where(is.numeric)) -> df
+
+corr <- cor(df)
+
+corr_df <- as.data.frame(as.table(corr))
+
+ggplot(corr_df, aes(Var1, Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#d0d1e6", mid = "#f7f7f7", high = "#1c9099", midpoint = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(title = "Correlation Heatmap", x = "", y = "") +
+  coord_fixed()
+
+```
+
+## ANOVA by Age
+
+```{r}
+df <- read.csv("w2-physical-activity.csv")
+
+# Remove 'Filename' and 'Epoch' columns
+df_clean <- subset(df, select = -c(Filename, Epoch))
+
+# Convert Age to a factor (if you want to treat it as a categorical variable)
+df_clean$Age <- as.factor(df_clean$Age)
+
+# Remove non-numeric columns other than Age
+numeric_vars <- sapply(df_clean, is.numeric)
+numeric_vars["Age"] <- TRUE  # keep Age for grouping
+df_clean <- df_clean[, numeric_vars]
+
+# Run ANOVA for each variable by Age
+anova_results <- lapply(names(df_clean)[names(df_clean) != "Age"], function(var) {
+  formula <- as.formula(paste(var, "~ Age"))
+  result <- summary(aov(formula, data = df_clean))
+  list(variable = var, result = result)
+})
+
+print(anova_results)
+
+# Print results for variables with significant differences
+significant_anovas <- lapply(anova_results, function(x) {
+  pval <- x$result[[1]]["Pr(>F)"][1, 1]
+  if (!is.na(pval) && pval < 0.05) return(x)
+})
+
+
+
+significant_anovas <- Filter(Negate(is.null), significant_anovas)
+
+# Display variable names with significant Age effect
+sapply(significant_anovas, function(x) x$variable)
+
+```
+
+## Effect Size by Age
+
+```{r}
+library(effectsize)
+
+# Let's assume `anova_results` is as before:
+effect_sizes <- lapply(names(df_clean)[names(df_clean) != "Age"], function(var) {
+  formula <- as.formula(paste(var, "~ Age"))
+  model <- aov(formula, data = df_clean)
+  eta <- eta_squared(model, partial = FALSE)
+  list(variable = var, eta_squared = eta)
+})
+
+# Filter for those with significant p-values (p < 0.05)
+significant_effects <- lapply(anova_results, function(x) {
+  pval <- x$result[[1]]["Pr(>F)"][1, 1]
+  if (!is.na(pval) && pval < 0.05) return(x$variable)
+})
+significant_effects <- Filter(Negate(is.null), significant_effects)
+
+# Pull effect sizes for only significant variables
+significant_eta <- Filter(function(e) e$variable %in% significant_effects, effect_sizes)
+
+# View the effect sizes
+for (e in significant_eta) {
+  cat("Variable:", e$variable, "\n")
+  print(e$eta_squared)
+  cat("\n")
+}
+```
+
+## Unsupervised Learning
+
+### PCA+K-Means
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+
+# Read the data
+data <- read_csv("w2-physical-activity.csv")
+
+# --- Step 1: Drop NAs and keep only numeric predictors ---
+data_clean <- data %>%
+  select(where(is.numeric)) %>%
+  drop_na()
+
+# --- Step 2: Normalize and apply PCA using recipes ---
+pca_recipe <- recipe(~ ., data = data_clean) %>%
+  step_normalize(all_predictors()) %>%
+  step_pca(all_predictors(), num_comp = 5)  # You can adjust num_comp as needed
+
+pca_prep <- prep(pca_recipe)
+pca_data <- bake(pca_prep, new_data = NULL)
+
+# --- Step 3: Elbow method to find optimal k ---
+set.seed(123)
+wss_df <- tibble(k = 1:10) %>%
+  mutate(
+    kmeans_model = map(k, ~ kmeans(pca_data, centers = .x, nstart = 10)),
+    tot_withinss = map_dbl(kmeans_model, ~ .x$tot.withinss)
+  )
+
+# Plot WSS vs K
+wss_df %>%
+  ggplot(aes(k, tot_withinss)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method", x = "Number of Clusters (k)", y = "Total Within-Cluster SS") + 
+  theme_minimal()
+
+# --- Step 4: Choose k (example: 3) and run k-means on PCA data ---
+optimal_k <- 4  # Change this after looking at the elbow plot
+
+set.seed(123)
+final_kmeans <- kmeans(pca_data, centers = optimal_k, nstart = 25)
+
+# --- Step 5: Add cluster labels to PCA data ---
+pca_clustered <- pca_data %>%
+  mutate(cluster = factor(final_kmeans$cluster))
+
+# Optional: Visualize
+pca_clustered %>%
+  ggplot(aes(PC1, PC2, color = cluster)) +
+  geom_point(size = 2, alpha = 0.8) +
+  labs(title = "K-means Clustering on PCA-reduced Data") +
+  theme_minimal()
+
+```
+
+```{r}
+data_profiled <- data_clean %>%
+  mutate(cluster = factor(final_kmeans$cluster))
+
+```
+
+```{r}
+# Loop through each numeric variable and plot violin plots by cluster
+numeric_vars <- names(data_clean)
+
+for (var in numeric_vars) {
+  p <- ggplot(data_profiled, aes(x = cluster, y = .data[[var]], fill = cluster)) +
+    geom_violin(trim = FALSE, alpha = 0.7) +
+    geom_jitter(width = 0.2, alpha = 0.3, size = 0.8) +
+    theme_minimal() +
+    labs(title = paste("Violin Plot of", var, "by Cluster"),
+         x = "Cluster", y = var) +
+    theme(legend.position = "none")
+  
+  print(p)
+}
+
+```

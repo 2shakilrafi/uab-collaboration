@@ -1,0 +1,78 @@
+     Variable                                        Description
+          SID                                         Subject ID
+       p1pgen               Parent gender (1 = Male, 2 = Female)
+       p1edu1                Parent's highest level of education
+       p1peth                                   Parent ethnicity
+     p1zFISUM           Z-score of Family Income Score (summary)
+      p1reapx           Parent's perception of economic hardship
+      p1cname                Child's initials or anonymized name
+       p1cdob                              Child's date of birth
+       p1page                                Parent age in years
+       p1cpob     City, State, Country of child’s place of birth
+        p1rel                       Parent relationship to child
+ p1rel_3_TEXT                     If other, specify relationship
+       p1hhad                  Number of adults in the household
+       p1hhch                Number of children in the household
+      p1chol1 Has child lived with someone who drank excessively
+      p1chol2   Has child lived with someone with mental illness
+       p1mar1                              Parent marital status
+       p1edu2                          Partner's education level
+       p1emp1                           Parent employment status
+       p1emp2                          Partner employment status
+       p1ceth                                    Child ethnicity
+p1ceth_7_TEXT                  Child ethnicity (Other - specify)
+p1peth_7_TEXT                 Parent ethnicity (Other - specify)
+      p1incom                                Family income range
+          inc                        Family income level (coded)
+         p1sp                             Parental support scale
+      p1anxdp                  Parental anxiety/depression score
+        p1wtd                              Weighted stress score
+        p1rbb                             Risky behavior beliefs
+        p1agg                          Parental aggression score
+        p1smc                              Social media concerns
+       p1thpr                Thought problems reported by parent
+      p1atnpr              Attention problems reported by parent
+        p1hpa                                  Harsh parenting A
+        p1hpb                                  Harsh parenting B
+      p1reaps                     Economic pressure (subjective)
+        p1pps                          Parenting practices scale
+        p1pms                          Parental monitoring scale
+        p1ids                      Internalizing disorders scale
+        p1pis                         Parental involvement scale
+        p1cps                                Child problem scale
+        p1ppx             Parental perception of external stress
+       p1pmsx           Parental monitoring of social experience
+        p1idx                      Internalizing disorders index
+        p1pix                         Parental involvement index
+      p1schen                                  School engagement
+     p1unsafx                     Neighborhood safety perception
+        p1ssx                               Social support index
+        minor                Indicates if participant is a minor
+     zFIadult                Z-score Family Income - Adult scale
+     VAR00002          Survey variable placeholder (unspecified)
+      W1AGE_P                                 Wave 1: Parent Age
+       p1nl12                         Neighborhood quality score
+     VAR00001          Survey variable placeholder (unspecified)
+       p1nl13                        Neighborhood cohesion index
+     p1nl15_1                Neighborhood condition indicator #1
+     p1nl15_2                Neighborhood condition indicator #2
+     p1nl15_3                Neighborhood condition indicator #3
+     p1nl15_4                Neighborhood condition indicator #4
+     p1nl15_5                Neighborhood condition indicator #5
+     p1nl15_6                Neighborhood condition indicator #6
+     p1nl15_7                Neighborhood condition indicator #7
+     p1nl15_8                Neighborhood condition indicator #8
+     p1nl15_9                Neighborhood condition indicator #9
+    p1nl15_10               Neighborhood condition indicator #10
+    p1nl15_11               Neighborhood condition indicator #11
+    p1nl15_12               Neighborhood condition indicator #12
+     p1nl17_1                  Neighborhood safety perception #1
+     p1nl17_2                  Neighborhood safety perception #2
+     p1nl17_3                  Neighborhood safety perception #3
+     p1nl17_4                  Neighborhood safety perception #4
+     p1nl17_5                  Neighborhood safety perception #5
+     p1nl17_6                  Neighborhood safety perception #6
+     p1nl17_7                  Neighborhood safety perception #7
+     p1nl17_8                  Neighborhood safety perception #8
+     p1nl17_9                  Neighborhood safety perception #9
+    p1nl17_10                 Neighborhood safety perception #10

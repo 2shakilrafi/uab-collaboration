@@ -1,0 +1,29 @@
+"0","library(tidylog)"
+"2","
+Attaching package: ‘tidylog’
+
+"
+"2","The following objects are masked from ‘package:dplyr’:
+
+    add_count, add_tally, anti_join, count, distinct, distinct_all, distinct_at, distinct_if, filter, filter_all, filter_at,
+    filter_if, full_join, group_by, group_by_all, group_by_at, group_by_if, inner_join, left_join, mutate, mutate_all, mutate_at,
+    mutate_if, relocate, rename, rename_all, rename_at, rename_if, rename_with, right_join, sample_frac, sample_n, select, select_all,
+    select_at, select_if, semi_join, slice, slice_head, slice_max, slice_min, slice_sample, slice_tail, summarise, summarise_all,
+    summarise_at, summarise_if, summarize, summarize_all, summarize_at, summarize_if, tally, top_frac, top_n, transmute,
+    transmute_all, transmute_at, transmute_if, ungroup
+
+"
+"2","The following objects are masked from ‘package:tidyr’:
+
+    drop_na, fill, gather, pivot_longer, pivot_wider, replace_na, separate_wider_delim, separate_wider_position, separate_wider_regex,
+    spread, uncount
+
+"
+"2","The following object is masked from ‘package:stats’:
+
+    filter
+
+"
+"0","data |>"
+"0","  select(Weightlbs)"
+"2","select: dropped 37 variables (SID, Age, Gender, kcals, Averagekcalsperday, …)"

@@ -1,0 +1,347 @@
+"0","library(effectsize)"
+"0",""
+"0","# Load data"
+"0","data <- read.csv(""w1-parent-scored.csv"")"
+"0",""
+"0","# Psychometric variables"
+"0","psychometrics <- list("
+"0","  p1sp   = ""Parental Support"","
+"0","  p1anxdp = ""Anxiety/Depression"","
+"0","  p1wtd  = ""Weighted Stress"","
+"0","  p1rbb  = ""Risky Behavior Beliefs"","
+"0","  p1agg  = ""Aggression"","
+"0","  p1smc  = ""Social Media Concerns"","
+"0","  p1thpr = ""Thought Problems"","
+"0","  p1atnpr = ""Attention Problems"","
+"0","  p1pix  = ""Parental Involvement Index"","
+"0","  p1ppx  = ""Parental External Stress"","
+"0","  p1pmsx = ""Monitoring Social Experience"""
+"0",")"
+"0",""
+"0","# Loop: run ANOVA and compute eta squared"
+"0","for (var in names(psychometrics)) {"
+"0","  formula <- as.formula(paste(var, ""~ as.factor(p1edu1)""))"
+"0","  "
+"0","  # Run ANOVA"
+"0","  model <- aov(formula, data = data)"
+"0","  "
+"0","  # Eta Squared"
+"0","  eta <- eta_squared(model, partial = FALSE)"
+"0","  "
+"0","  # Kruskal-Wallis"
+"0","  kw_p <- kruskal.test(formula, data = data)$p.value"
+"0","  "
+"0","  cat(""\n----------------------------------------\n"")"
+"0","  cat(""Results for"", psychometrics[[var]], ""("", var, "")\n"")"
+"0","  cat(""----------------------------------------\n"")"
+"0","  print(eta)"
+"0","  cat(""Kruskal-Wallis p-value:"", round(kw_p, 4), ""\n"")"
+"0","}"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Parental Support"
+"1"," "
+"1","("
+"1"," "
+"1","p1sp"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.08 | [0.02, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","7e-04"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Anxiety/Depression"
+"1"," "
+"1","("
+"1"," "
+"1","p1anxdp"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.03 | [0.00, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.0656"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Weighted Stress"
+"1"," "
+"1","("
+"1"," "
+"1","p1wtd"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.08 | [0.02, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","4e-04"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Risky Behavior Beliefs"
+"1"," "
+"1","("
+"1"," "
+"1","p1rbb"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.04 | [0.00, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.0273"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Aggression"
+"1"," "
+"1","("
+"1"," "
+"1","p1agg"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.03 | [0.00, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.494"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Social Media Concerns"
+"1"," "
+"1","("
+"1"," "
+"1","p1smc"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.04 | [0.00, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.1283"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Thought Problems"
+"1"," "
+"1","("
+"1"," "
+"1","p1thpr"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.07 | [0.01, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.081"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Attention Problems"
+"1"," "
+"1","("
+"1"," "
+"1","p1atnpr"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.04 | [0.00, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.2699"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Parental Involvement Index"
+"1"," "
+"1","("
+"1"," "
+"1","p1pix"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.06 | [0.01, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.0512"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Parental External Stress"
+"1"," "
+"1","("
+"1"," "
+"1","p1ppx"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.04 | [0.00, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.1178"
+"1"," "
+"1","
+"
+"1","
+----------------------------------------
+"
+"1","Results for"
+"1"," "
+"1","Monitoring Social Experience"
+"1"," "
+"1","("
+"1"," "
+"1","p1pmsx"
+"1"," "
+"1",")
+"
+"1","----------------------------------------
+"
+"1","[34m# Effect Size for ANOVA (Type I)[39m
+
+Parameter         | Eta2 |       95% CI
+---------------------------------------
+as.factor(p1edu1) | 0.07 | [0.01, 1.00]
+[36m
+- One-sided CIs: upper bound fixed at [1.00].[39m"
+"1","Kruskal-Wallis p-value:"
+"1"," "
+"1","0.0866"
+"1"," "
+"1","
+"

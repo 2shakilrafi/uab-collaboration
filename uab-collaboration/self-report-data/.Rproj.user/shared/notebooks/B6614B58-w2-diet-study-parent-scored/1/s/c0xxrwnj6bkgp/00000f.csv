@@ -1,0 +1,10 @@
+"0","library(tidyverse)"
+"0",""
+"0","data <- read_csv(""w2-dite-study-parent-scored.csv"")"
+"2","[1mRows: [22m[34m179[39m [1mColumns: [22m[34m24[39m"
+"2","[36m──[39m [1mColumn specification[22m [36m───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m
+[1mDelimiter:[22m "",""
+[32mdbl[39m (24): SID, p2sp, p2axdep, p2wtd, p2rbb, p2agg, p2smc, p2thpr, p2atn, p2pix, p2ppx, p2pmx, p2idx, p2hpb, p2hpa, p2reapx, p2ssx, p2schen, p2csdg,..."
+"2","
+[36mℹ[39m Use `spec()` to retrieve the full column specification for this data.
+[36mℹ[39m Specify the column types or set `show_col_types = FALSE` to quiet this message."

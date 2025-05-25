@@ -1,0 +1,25 @@
+"0","skimr::skim(data)"
+"1","── Data Summary ────────────────────────
+"
+"1","                           Values
+"
+"1","Name                       data  
+"
+"1","Number of rows             127   
+"
+"1","Number of columns          38    
+"
+"1","_______________________          
+"
+"1","Column type frequency:           
+"
+"1","  character                27    
+"
+"1","  logical                  1     
+"
+"1","  numeric                  10    
+"
+"1","________________________         
+"
+"1","Group variables            None  
+"

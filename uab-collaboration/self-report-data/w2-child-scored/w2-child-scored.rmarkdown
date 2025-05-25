@@ -1,0 +1,546 @@
+---
+title: "W2 Child Scored"
+author: "Shakil Rafi"
+format: revealjs
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: tibble
+comments:
+  hypothesis: true
+editor: visual
+---
+
+
+
+## Read Data
+
+
+
+```{r}
+library(tidyverse)
+
+data <- read_csv("w2-child-scored.csv")
+```
+
+
+
+## Descriptive Statistics
+
+
+
+```{r}
+data <- data |>
+    select(-SID, -c2init, -c2stid, -c2demB, -VAR00001, -COVID)
+    
+data |> psych::describe()
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(readr)
+
+df <- data 
+
+# Pastel palette
+pastel_colors <- c("#AEC6CF", "#FFB347", "#B39EB5", "#77DD77", "#F49AC2")
+
+# Loop through columns and plot
+for (i in seq_along(df)) {
+  col_name <- names(df)[i]
+  color <- pastel_colors[(i - 1) %% length(pastel_colors) + 1]
+  
+  p <- ggplot(df, aes_string(x = col_name)) +
+    geom_density(fill = color, alpha = 0.7, color = "black", linewidth = 0.5) +
+    labs(title = paste("Density Plot of", col_name)) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      axis.title.y = element_blank()
+    )
+  
+  print(p)
+}
+```
+
+```{r}
+shapiro_results <- df |>
+  summarise(across(everything(), ~ list(shapiro.test(.x)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "test") |>
+  mutate(
+    statistic = map_dbl(test, ~ .x$statistic),
+    p_value = map_dbl(test, ~ .x$p.value)
+  ) |>
+  select(variable, statistic, p_value)
+
+shapiro_results
+```
+
+
+
+## Stratification by COVID
+
+
+
+```{r}
+library(tidyverse)
+
+# Load the data
+df <- read_csv("w2-child-scored.csv")
+df <- df |>
+    select(-SID, -c2init, -c2stid, -c2demB, -VAR00001)
+
+# Get numeric columns excluding 'COVID'
+variables <- names(df)[names(df) != "COVID"]
+
+# Set pastel color palette
+pastel_palette <- c("#BAE1FF","#FFB3BA")  # You can add more if needed
+
+# Loop through each variable and plot
+for (var in variables) {
+  p <- ggplot(df, aes(x = factor(COVID), y = .data[[var]], fill = factor(COVID))) +
+    geom_violin(trim = FALSE, alpha = 0.7, color = NA) +
+    geom_jitter(aes(color = factor(COVID)), width = 0.2, alpha = 0.4, size = 1.5, show.legend = FALSE) +
+    geom_boxplot(width = 0.1, outlier.shape = NA, fill = "white", color = "black", alpha = 0.4) +
+    scale_fill_manual(values = pastel_palette) +
+    scale_color_manual(values = pastel_palette) +
+    theme_minimal() +
+    labs(title = paste("Violin Plot of", var, "by COVID Status"),
+         x = "COVID",
+         y = var) +
+    theme(legend.position = "none",
+          plot.title = element_text(hjust = 0.5, size = 14))
+
+  print(p)
+}
+
+```
+
+```{r}
+df <- read_csv("w2-child-scored.csv")
+groups <- df |>
+  group_by(COVID) |>
+  group_split()
+
+names(groups) <- paste0("COVID_", unique(df$COVID))
+
+lapply(groups, psych::describe)
+
+
+  
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+
+# Load the data
+df <- read.csv("w2-child-scored.csv")
+df |>
+    select(-SID,-c2init, -c2stid, c2demB, -VAR00001) -> df
+
+# Convert 'covid' column to factor (if it's not already)
+df$COVID <- as.factor(df$COVID)
+
+# Get all numeric column names except the 'covid' column
+num_cols <- df %>%
+  select(where(is.numeric)) %>%
+  colnames()
+
+# Perform t-tests for each numeric column stratified by 'covid'
+ttest_results <- lapply(num_cols, function(col) {
+  t_result <- t.test(df[[col]] ~ df$COVID)
+  data.frame(
+    variable = col,
+    p_value = t_result$p.value,
+    t_statistic = t_result$statistic,
+    mean_group1 = t_result$estimate[1],
+    mean_group2 = t_result$estimate[2]
+  )
+})
+
+# Combine into a single data frame
+ttest_df <- bind_rows(ttest_results)
+
+# View the results
+print(ttest_df)
+
+ttest_df %>%
+  mutate(significant = p_value < 0.05) %>%
+  ggplot(aes(x = reorder(variable, p_value), y = p_value, fill = significant)) +
+  geom_col() +
+  geom_hline(yintercept = 0.05, linetype = "dashed", color = "black") +
+  coord_flip() +
+  labs(title = "T-test p-values by variable (stratified by covid)",
+       x = "Variable", y = "p-value") +
+  scale_fill_manual(values = c("TRUE" = "red", "FALSE" = "steelblue")) +
+  theme_minimal()
+
+```
+
+
+
+## Supervised Learning
+
+### GLM
+
+
+
+```{r}
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+library(purrr)
+library(broom)
+library(readr)
+library(RColorBrewer)
+
+set.seed(42)
+
+# Load and prepare the data
+df <- read_csv("w2-child-scored.csv") |>
+  select(-SID, -c2init, -c2stid, -c2demB, -VAR00001)
+
+targets <- names(df)
+
+# Function to run GLM model for a given target
+run_glm_model <- function(target, data) {
+  rec <- recipe(as.formula(paste(target, "~ .")), data = data) %>%
+    step_normalize(all_predictors())
+
+  glm_spec <- linear_reg() %>%
+    set_engine("lm") %>%
+    set_mode("regression")
+
+  wf <- workflow() %>%
+    add_model(glm_spec) %>%
+    add_recipe(rec)
+
+  folds <- vfold_cv(data, v = 5, repeats = 3)
+
+  res <- fit_resamples(
+    wf,
+    resamples = folds,
+    metrics = metric_set(rmse, rsq),
+    control = control_resamples(save_pred = TRUE)
+  )
+
+  final_fit <- fit(wf, data = data)
+
+  # Training set R²
+  preds_train <- predict(final_fit, data) %>%
+    bind_cols(data %>% select(!!target))
+  colnames(preds_train) <- c("prediction", "truth")
+  rsq_train <- rsq(preds_train, truth = truth, estimate = prediction) %>%
+    pull(.estimate)
+
+  # Cross-validated R²
+  rsq_cv <- collect_metrics(res) %>%
+    filter(.metric == "rsq") %>%
+    summarise(cv_rsq = mean(mean)) %>%
+    pull(cv_rsq)
+
+  # Get coefficients
+  coefs <- tidy(final_fit) %>%
+    filter(term != "(Intercept)") %>%
+    mutate(
+      Target = target,
+      term = gsub("`", "", term)
+    )
+
+  list(
+    target = target,
+    rsq_train = rsq_train,
+    rsq_cv = rsq_cv,
+    coefficients = coefs
+  )
+}
+
+# Run model for each target
+results_glm <- map(targets, ~ run_glm_model(.x, df))
+
+# Define pastel palette
+pastel_palette <- brewer.pal(8, "Pastel1")
+
+# Plot each target’s coefficients individually with pastel colors
+walk(results_glm, function(res) {
+  n_features <- nrow(res$coefficients)
+  colors <- rep(pastel_palette, length.out = n_features)
+
+  p <- ggplot(res$coefficients, aes(x = reorder(term, estimate), y = estimate)) +
+    geom_col(fill = colors) +
+    coord_flip() +
+    theme_minimal(base_size = 14) +
+    labs(
+      title = paste("Feature Importances for:", res$target),
+      subtitle = paste0("R² (Train): ", round(res$rsq_train, 3),
+                        " | R² (CV): ", round(res$rsq_cv, 3)),
+      x = "Features", y = "Standardized Coefficient"
+    )
+
+  print(p)
+})
+
+```
+
+
+
+### Random Forests
+
+
+
+```{r}
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+library(purrr)
+library(broom)
+library(readr)
+library(RColorBrewer)
+library(vip)
+
+set.seed(42)
+
+# Load and prepare the data
+df <- read_csv("w2-child-scored.csv") %>%
+  select(-SID, -c2init, -c2stid, -c2demB, -VAR00001)
+
+# Extract all column names as potential targets
+targets <- names(df)
+
+# Function to run Random Forest model for a given target
+run_rf_model <- function(target, data) {
+  # Remove rows with missing target values
+  data_clean <- data %>% filter(!is.na(.data[[target]]))
+  
+  # Skip if there are too few rows to model
+  if (nrow(data_clean) < 10) {
+    message(glue::glue("Skipping {target}: Not enough rows after filtering."))
+    return(NULL)
+  }
+
+  rec <- recipe(as.formula(paste(target, "~ .")), data = data_clean) %>%
+    step_normalize(all_predictors())
+
+  rf_spec <- rand_forest(mtry = tune(), trees = 500, min_n = tune()) %>%
+    set_engine("ranger", importance = "permutation") %>%
+    set_mode("regression")
+
+  wf <- workflow() %>%
+    add_model(rf_spec) %>%
+    add_recipe(rec)
+
+  folds <- vfold_cv(data_clean, v = 5, repeats = 3)
+
+  rf_grid <- grid_regular(
+    mtry(range = c(2, 10)),
+    min_n(range = c(2, 10)),
+    levels = 3
+  )
+
+  tuned <- tune_grid(
+    wf,
+    resamples = folds,
+    grid = rf_grid,
+    metrics = metric_set(rmse, rsq),
+    control = control_grid(save_pred = TRUE)
+  )
+
+  best_params <- select_best(tuned, metric = "rsq")
+
+  final_wf <- finalize_workflow(wf, best_params)
+  final_fit <- fit(final_wf, data = data_clean)
+
+  preds_train <- predict(final_fit, data_clean) %>%
+    bind_cols(truth = data_clean[[target]]) %>%
+    rename(prediction = .pred)
+
+  rsq_train <- rsq(preds_train, truth = truth, estimate = prediction) %>%
+    pull(.estimate)
+
+  rsq_cv <- tuned %>%
+    collect_metrics() %>%
+    filter(.metric == "rsq") %>%
+    summarise(cv_rsq = max(mean)) %>%
+    pull(cv_rsq)
+
+  vip <- final_fit %>%
+    extract_fit_parsnip() %>%
+    vip::vi() %>%
+    rename(term = Variable, importance = Importance) %>%
+    mutate(
+      Target = target,
+      term = gsub("`", "", term)
+    )
+
+  list(
+    target = target,
+    rsq_train = rsq_train,
+    rsq_cv = rsq_cv,
+    importances = vip
+  )
+}
+
+# Run model for each target
+results_rf <- map(targets, ~ run_rf_model(.x, df)) %>%
+  compact()  # Remove NULL results
+
+# Define pastel palette
+pastel_palette <- brewer.pal(8, "Pastel2")
+
+# Plot each target’s importances individually
+walk(results_rf, function(res) {
+  n_features <- nrow(res$importances)
+  colors <- rep(pastel_palette, length.out = n_features)
+
+  p <- ggplot(res$importances, aes(x = reorder(term, importance), y = importance)) +
+    geom_col(fill = colors) +
+    coord_flip() +
+    theme_minimal(base_size = 14) +
+    labs(
+      title = paste("Random Forest Feature Importances for:", res$target),
+      subtitle = paste0("R² (Train): ", round(res$rsq_train, 3),
+                        " | R² (CV): ", round(res$rsq_cv, 3)),
+      x = "Features", y = "Importance (Permutation)"
+    )
+
+  print(p)
+})
+
+```
+
+
+
+### XGBoost
+
+
+
+```{r}
+library(tidymodels)
+library(ggplot2)
+library(dplyr)
+library(purrr)
+library(broom)
+library(readr)
+library(RColorBrewer)
+library(vip)
+library(glue)
+
+set.seed(42)
+
+# Load and prepare the data
+df <- read_csv("w2-child-scored.csv") %>%
+  select(-SID, -c2init, -c2stid, -c2demB, -VAR00001)
+
+# Extract all column names as potential targets
+targets <- names(df)
+
+# Function to run XGBoost model for a given target
+run_xgb_model <- function(target, data) {
+  # Remove rows with missing target values
+  data_clean <- data %>% filter(!is.na(.data[[target]]))
+  
+  # Skip if too few rows
+  if (nrow(data_clean) < 10) {
+    message(glue("Skipping {target}: Not enough rows after filtering."))
+    return(NULL)
+  }
+
+  rec <- recipe(as.formula(paste(target, "~ .")), data = data_clean) %>%
+    step_normalize(all_predictors())
+
+  xgb_spec <- boost_tree(
+    trees = tune(),
+    tree_depth = tune(),
+    learn_rate = tune()
+  ) %>%
+    set_engine("xgboost") %>%
+    set_mode("regression")
+
+  wf <- workflow() %>%
+    add_model(xgb_spec) %>%
+    add_recipe(rec)
+
+  folds <- vfold_cv(data_clean, v = 5, repeats = 3)
+
+  xgb_grid <- grid_regular(
+    trees(range = c(100, 500)),
+    tree_depth(range = c(2, 10)),
+    learn_rate(range = c(0.01, 0.3)),
+    levels = 3
+  )
+
+  tuned <- tune_grid(
+    wf,
+    resamples = folds,
+    grid = xgb_grid,
+    metrics = metric_set(rmse, rsq),
+    control = control_grid(save_pred = TRUE)
+  )
+
+  best_params <- select_best(tuned, metric = "rsq")
+
+  final_wf <- finalize_workflow(wf, best_params)
+  final_fit <- fit(final_wf, data = data_clean)
+
+  preds_train <- predict(final_fit, data_clean) %>%
+    bind_cols(truth = data_clean[[target]]) %>%
+    rename(prediction = .pred)
+
+  rsq_train <- rsq(preds_train, truth = truth, estimate = prediction) %>%
+    pull(.estimate)
+
+  rsq_cv <- tuned %>%
+    collect_metrics() %>%
+    filter(.metric == "rsq") %>%
+    summarise(cv_rsq = max(mean)) %>%
+    pull(cv_rsq)
+
+  vip <- final_fit %>%
+    extract_fit_parsnip() %>%
+    vip::vi() %>%
+    rename(term = Variable, importance = Importance) %>%
+    mutate(
+      Target = target,
+      term = gsub("`", "", term)
+    )
+
+  list(
+    target = target,
+    rsq_train = rsq_train,
+    rsq_cv = rsq_cv,
+    importances = vip
+  )
+}
+
+# Run model for each target
+results_xgb <- map(targets, ~ run_xgb_model(.x, df)) %>%
+  compact()  # Remove NULL results
+
+# Define pastel palette
+pastel_palette <- brewer.pal(8, "Pastel2")
+
+# Plot each target’s importances individually
+walk(results_xgb, function(res) {
+  n_features <- nrow(res$importances)
+  colors <- rep(pastel_palette, length.out = n_features)
+
+  p <- ggplot(res$importances, aes(x = reorder(term, importance), y = importance)) +
+    geom_col(fill = colors) +
+    coord_flip() +
+    theme_minimal(base_size = 14) +
+    labs(
+      title = paste("XGBoost Feature Importances for:", res$target),
+      subtitle = paste0("R² (Train): ", round(res$rsq_train, 3),
+                        " | R² (CV): ", round(res$rsq_cv, 3)),
+      x = "Features", y = "Importance (Gain)"
+    )
+
+  print(p)
+})
+
+```
+

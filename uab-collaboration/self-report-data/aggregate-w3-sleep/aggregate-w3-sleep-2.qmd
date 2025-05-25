@@ -1,0 +1,32 @@
+---
+title: "Aggregated W3 Sleep Data"
+author: "Shakil Rafi"
+format: html
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: tibble
+comments:
+  hypothesis: true
+editor: visual
+---
+
+```{r}
+library(haven)
+
+data <- read_sav("aggregated_W3sleep.sav")
+
+# View variable labels
+var_labels <- sapply(data, function(x) attr(x, "label"))
+print(var_labels)
+
+# View value labels (for categorical variables)
+val_labels <- lapply(data, function(x) attr(x, "labels"))
+print(val_labels)
+
+```
+
+```{r}
+
+```

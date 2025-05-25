@@ -1,0 +1,241 @@
+---
+title: "W1 Full Battery Scored"
+author: "Shakil Rafi"
+format: html
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: tibble
+comments:
+  hypothesis: true
+editor: visual
+---
+
+## Read Data
+
+```{r}
+library(tidyverse)
+
+data <- read_csv("w1-full-battery-scored.csv")
+```
+
+## Descriptive Statistics
+
+```{r}
+data |>
+  psych::describe()
+```
+
+```{r}
+df <- read_csv("w1-full-battery-scored.csv")
+df <- df %>% select(-SID, -site) |> drop_na()
+
+# Pastel palette
+pastel_colors <- c("#AEC6CF", "#FFB347", "#B39EB5", "#77DD77", "#F49AC2")
+
+# Loop through columns and plot
+for (i in seq_along(df)) {
+  col_name <- names(df)[i]
+  color <- pastel_colors[(i - 1) %% length(pastel_colors) + 1]
+  
+  p <- ggplot(df, aes_string(x = col_name)) +
+    geom_density(fill = color, alpha = 0.7, color = "black", linewidth = 0.5) +  # Eyeliner, baby
+    labs(title = paste("Density Plot of", col_name)) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      axis.title.y = element_blank()
+    )
+  
+  print(p)
+}
+```
+
+```{r}
+shapiro_results <- df |>
+  summarise(across(everything(), ~ list(shapiro.test(.x)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "test") |>
+  mutate(
+    statistic = map_dbl(test, ~ .x$statistic),
+    p_value = map_dbl(test, ~ .x$p.value)
+  ) |>
+  select(variable, statistic, p_value)
+
+shapiro_results
+```
+
+```{r}
+#| fig-width: 7
+#| fig-height: 7
+#| 
+corr <- cor(df)
+corr_df <- as.data.frame(as.table(corr))
+
+ggplot(corr_df, aes(Var1, Var2, fill = Freq)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#d0d1e6", mid = "#f7f7f7", high = "#1c9099", midpoint = 0) +
+  theme_minimal() +
+  labs(title = "Correlation Heatmap", x = "", y = "") +
+  coord_fixed() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+```{r}
+pastel_points <- c("#FBB4AE", "#B3CDE3", "#CCEBC5", "#DECBE4")
+pastel_lines <- c("#FDBE85", "#A6CEE3", "#B2DF8A", "#CAB2D6")
+
+# Generate all unique variable pairs
+pairs <- combn(names(df), 2, simplify = FALSE)
+
+# Loop through pairs and make pastel scatter plots
+for (i in seq_along(pairs)) {
+  pair <- pairs[[i]]
+  x_var <- pair[1]
+  y_var <- pair[2]
+  
+  # Correlation stuff
+  test <- cor.test(df[[x_var]], df[[y_var]])
+  r_val <- round(test$estimate, 2)
+  p_val <- signif(test$p.value, 2)
+  label <- paste0("r = ", r_val, ", p = ", p_val)
+  
+  # Pick pastel colors
+  point_color <- pastel_points[(i - 1) %% length(pastel_points) + 1]
+  line_color <- pastel_lines[(i - 1) %% length(pastel_lines) + 1]
+  
+  # Plot
+  p <- ggplot(df, aes_string(x = x_var, y = y_var)) +
+    geom_point(alpha = 0.7, color = point_color, size = 2.5) +
+    geom_smooth(method = "lm", se = TRUE, color = line_color, fill = line_color, alpha = 0.3) +
+    annotate("text",
+             x = Inf, y = -Inf,
+             label = label,
+             hjust = 1.1, vjust = -0.5,
+             size = 5, fontface = "italic") +
+    labs(
+      title = paste("Scatterplot of", y_var, "vs", x_var),
+      x = x_var,
+      y = y_var
+    ) +
+    theme_minimal(base_size = 15)
+  
+  print(p)
+}
+```
+
+## Supervised Models
+
+### XGBoost
+
+```{r}
+library(tidymodels)
+library(vip)
+library(ggplot2)
+library(readr)
+library(dplyr)
+
+
+targets <- names(df)
+
+run_model <- function(target, data) {
+  rec <- recipe(as.formula(paste(target, "~ .")), data = data) |>
+    step_impute_median(all_predictors()) |>  # Handle NAs here if any exist
+    step_normalize(all_predictors())
+
+  xgb_spec <- boost_tree(
+    trees = tune(),
+    tree_depth = tune(),
+    learn_rate = tune(),
+    loss_reduction = tune(),
+    sample_size = tune(),
+    mtry = tune()
+  ) |>
+    set_engine("xgboost") |>
+    set_mode("regression")
+
+  wf <- workflow() |>
+    add_model(xgb_spec) |>
+    add_recipe(rec)
+
+  folds <- vfold_cv(data, v = 5)
+
+  grid_vals <- grid_latin_hypercube(
+    trees(),
+    tree_depth(),
+    learn_rate(),
+    loss_reduction(),
+    sample_size = sample_prop(),
+    finalize(mtry(), data %>% select(-all_of(target))),
+    size = 15
+  )
+
+  tuned <- tune_grid(
+    wf,
+    resamples = folds,
+    grid = grid_vals,
+    metrics = metric_set(rmse, rsq),
+    control = control_grid(save_pred = TRUE)
+  )
+
+  best <- select_best(tuned, metric = "rmse")
+
+  final_wf <- finalize_workflow(wf, best)
+  final_fit <- fit(final_wf, data = data)
+
+  preds_train <- predict(final_fit, data) |>
+    bind_cols(data %>% select(!!target))
+  colnames(preds_train) <- c("prediction", "truth")
+  rsq_train <- rsq(preds_train, truth = truth, estimate = prediction) |> pull(.estimate)
+
+  best_config <- best %>% select(-.config)
+  tuned_metrics <- collect_predictions(tuned) |>
+    inner_join(best_config, by = colnames(best_config)) |>
+    group_by(id) |>
+    rsq(truth = !!sym(target), estimate = .pred) |>
+    summarise(cv_rsq = mean(.estimate))
+
+  rsq_cv <- mean(tuned_metrics$cv_rsq)
+
+  imp <- final_fit |>
+    pull_workflow_fit() |>
+    vip::vi(type = "gain") |>
+    mutate(
+      NormalizedGain = Importance / sum(Importance),
+      Target = target
+    )
+
+  list(
+    target = target,
+    rmse = show_best(tuned, metric = "rmse", n = 1),
+    rsq_train = rsq_train,
+    rsq_cv = rsq_cv,
+    workflow = final_wf,
+    fit = final_fit,
+    importance = imp
+  )
+}
+
+# Run all models
+results <- map(targets, ~ run_model(.x, df))
+
+# Generate and print one plot per target
+walk(results, function(res) {
+  imp_plot <- ggplot(res$importance, aes(x = reorder(Variable, NormalizedGain), y = NormalizedGain, fill = Target)) +
+    geom_col(show.legend = FALSE) +
+    coord_flip() +
+    theme_minimal() +
+    labs(
+      title = paste("Normalized XGBoost Feature Importance (Gain) for", res$target),
+      x = "Features", y = "Normalized Gain"
+    )
+  print(imp_plot)
+
+  # Print model metrics
+  cat("\nTarget:", res$target, "\n")
+  print(res$rmse)
+  cat("R² (Train):", round(res$rsq_train, 4), "\n")
+  cat("R² (Cross-validated):", round(res$rsq_cv, 4), "\n")
+})
+
+```

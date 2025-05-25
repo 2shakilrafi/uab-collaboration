@@ -1,0 +1,3 @@
+"0","data |>"
+"0","  select(-SID, -Gender) |>"
+"0","  psych::describe()"

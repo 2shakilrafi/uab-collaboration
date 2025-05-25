@@ -1,0 +1,308 @@
+---
+title: "W1 Physical Activity"
+author: "Shakil Rafi"
+format: html
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: paged
+comments:
+  hypothesis: true
+editor: visual
+---
+
+## Read Data
+
+```{r}
+library(tidyverse)
+data <- read_csv("W1 Physical Activity.csv")
+```
+
+```{r}
+
+
+data |> 
+  select(where(is.numeric)) |>
+  psych::describe()
+
+```
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(readr)
+
+# Read the dataset
+df <- read_csv("W1 Physical Activity.csv")
+
+# Remove non-relevant columns
+df_clean <- df %>% select(-Subject, -Filename, -Epoch)
+
+# Select only numeric columns
+numeric_df <- df_clean %>% select(where(is.numeric))
+
+# Loop through numeric columns and display density plots
+for (col_name in colnames(numeric_df)) {
+  p <- ggplot(numeric_df, aes_string(x = col_name)) +
+    geom_density(fill = "steelblue", alpha = 0.6) +
+    labs(title = paste("Density Plot of", col_name),
+         x = col_name,
+         y = "Density") +
+    theme_minimal()
+
+  print(p)
+}
+
+
+```
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(readr)
+
+# Load the dataset
+df <- read_csv("W1 Physical Activity.csv")
+
+# Drop non-numeric columns
+df_clean <- df %>% select(-Subject, -Filename, -Epoch)
+
+# Select only numeric columns
+numeric_df <- df_clean %>% select(where(is.numeric))
+
+# Apply Shapiro-Wilk test and store results
+shapiro_results <- map_dfr(names(numeric_df), function(var) {
+  values <- numeric_df[[var]]
+  if (length(unique(values)) < 3) {
+    tibble(Variable = var, W = NA, p_value = NA, Note = "Too few unique values")
+  } else {
+    test <- shapiro.test(values)
+    tibble(Variable = var, W = round(test$statistic, 4), p_value = round(test$p.value, 4), Note = NA)
+  }
+})
+
+shapiro_results
+
+```
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(readr)
+
+# Load the data
+df <- read_csv("W1 Physical Activity.csv")
+
+# Remove irrelevant columns
+df_clean <- df %>%
+  select(-Subject, -Filename, -Epoch)
+
+# Ensure Age is a factor (for grouping on x-axis and coloring)
+df_clean <- df_clean %>%
+  mutate(Age = as.factor(Age))
+
+# Select numeric columns excluding Age itself
+numeric_vars <- df_clean %>%
+  select(where(is.numeric))
+
+# Loop through numeric variables and generate violin plots grouped by Age
+for (var in names(numeric_vars)) {
+  p <- ggplot(df_clean, aes(x = Age, y = .data[[var]], fill = Age)) +
+    geom_violin(alpha = 0.7) +
+    geom_boxplot(width = 0.1, outlier.shape = NA, fill = "white", alpha = 0.6) +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(title = paste("Violin Plot of", var, "by Age"),
+         x = "Age",
+         y = var) +
+    theme_minimal() +
+    theme(legend.position = "none")
+
+  print(p)
+}
+
+```
+
+```{r}
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(RColorBrewer)
+
+# Load data
+data <- read.csv("W1 Physical Activity.csv")
+
+
+# Compute correlation matrix
+data |> 
+  select(where(is.numeric)) -> df
+cor_matrix <- cor(df, use = "pairwise.complete.obs")
+
+# Melt into long format
+cor_melted <- melt(cor_matrix)
+
+# Plot heatmap
+ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(
+    low = "blue", high = "red", mid = "white",
+    midpoint = 0, limit = c(-1, 1), space = "Lab",
+    name = "Correlation"
+  ) +
+  theme_minimal(base_size = 8) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(
+    title = "Correlation Heatmap of Psychometric Scores",
+    x = "", y = ""
+  )
+```
+
+## Scatter Plots
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+
+data |>
+  filter(Age %in% c(11, 12, 13)) |>
+  mutate(Age = as.factor(Age)) |>
+  select(METs, StepsCounts, Age) |>
+  ggplot(aes(x = METs, y = StepsCounts)) + 
+  geom_point(aes(color = Age), size = 2, alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE, color = "black", fill = "grey70", alpha = 0.3) +  # overall best-fit line
+  stat_cor(method = "pearson", label.x.npc = "left", label.y.npc = "top", size = 5) +
+  scale_color_manual(values = c("11" = "red", "12" = "blue", "13" = "green")) +
+  theme_minimal() +
+  labs(title = "Steps vs METs by Age Group", color = "Age")
+
+```
+
+## ANOVA
+
+```{r}
+# Load the data
+df <- read.csv("W1 Physical Activity.csv")
+
+# Remove 'Filename' and 'Epoch' columns
+df_clean <- subset(df, select = -c(Filename, Epoch))
+
+# Convert Age to a factor (if you want to treat it as a categorical variable)
+df_clean$Age <- as.factor(df_clean$Age)
+
+# Remove non-numeric columns other than Age
+numeric_vars <- sapply(df_clean, is.numeric)
+numeric_vars["Age"] <- TRUE  # keep Age for grouping
+df_clean <- df_clean[, numeric_vars]
+
+# Run ANOVA for each variable by Age
+anova_results <- lapply(names(df_clean)[names(df_clean) != "Age"], function(var) {
+  formula <- as.formula(paste(var, "~ Age"))
+  result <- summary(aov(formula, data = df_clean))
+  list(variable = var, result = result)
+})
+
+print(anova_results)
+
+# Print results for variables with significant differences
+significant_anovas <- lapply(anova_results, function(x) {
+  pval <- x$result[[1]]["Pr(>F)"][1, 1]
+  if (!is.na(pval) && pval < 0.05) return(x)
+})
+
+
+
+significant_anovas <- Filter(Negate(is.null), significant_anovas)
+
+# Display variable names with significant Age effect
+sapply(significant_anovas, function(x) x$variable)
+
+```
+
+```{r}
+library(effectsize)
+
+# Let's assume `anova_results` is as before:
+effect_sizes <- lapply(names(df_clean)[names(df_clean) != "Age"], function(var) {
+  formula <- as.formula(paste(var, "~ Age"))
+  model <- aov(formula, data = df_clean)
+  eta <- eta_squared(model, partial = FALSE)
+  list(variable = var, eta_squared = eta)
+})
+
+# Filter for those with significant p-values (p < 0.05)
+significant_effects <- lapply(anova_results, function(x) {
+  pval <- x$result[[1]]["Pr(>F)"][1, 1]
+  if (!is.na(pval) && pval < 0.05) return(x$variable)
+})
+significant_effects <- Filter(Negate(is.null), significant_effects)
+
+# Pull effect sizes for only significant variables
+significant_eta <- Filter(function(e) e$variable %in% significant_effects, effect_sizes)
+
+# View the effect sizes
+for (e in significant_eta) {
+  cat("Variable:", e$variable, "\n")
+  print(e$eta_squared)
+  cat("\n")
+}
+
+```
+
+### `kCals` and `AvgkCalsPerDay` from other data
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(tidymodels)
+
+# Read the data
+data <- read_csv("W1 Physical Activity.csv")
+
+# --- Step 1: Drop NAs and keep only numeric predictors ---
+data_clean <- data %>%
+  select(where(is.numeric)) %>%
+  drop_na()
+
+# --- Step 2: Normalize and apply PCA using recipes ---
+pca_recipe <- recipe(~ ., data = data_clean) %>%
+  step_normalize(all_predictors()) %>%
+  step_pca(all_predictors(), num_comp = 5)  # You can adjust num_comp as needed
+
+pca_prep <- prep(pca_recipe)
+pca_data <- bake(pca_prep, new_data = NULL)
+
+# --- Step 3: Elbow method to find optimal k ---
+set.seed(123)
+wss_df <- tibble(k = 1:10) %>%
+  mutate(
+    kmeans_model = map(k, ~ kmeans(pca_data, centers = .x, nstart = 10)),
+    tot_withinss = map_dbl(kmeans_model, ~ .x$tot.withinss)
+  )
+
+# Plot WSS vs K
+wss_df %>%
+  ggplot(aes(k, tot_withinss)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method", x = "Number of Clusters (k)", y = "Total Within-Cluster SS") + 
+  theme_minimal()
+
+# --- Step 4: Choose k (example: 3) and run k-means on PCA data ---
+optimal_k <- 4  # Change this after looking at the elbow plot
+
+set.seed(123)
+final_kmeans <- kmeans(pca_data, centers = optimal_k, nstart = 25)
+
+# --- Step 5: Add cluster labels to PCA data ---
+pca_clustered <- pca_data %>%
+  mutate(cluster = factor(final_kmeans$cluster))
+
+# Optional: Visualize
+pca_clustered %>%
+  ggplot(aes(PC1, PC2, color = cluster)) +
+  geom_point(size = 2, alpha = 0.8) +
+  labs(title = "K-means Clustering on PCA-reduced Data") +
+  theme_minimal()
+
+```

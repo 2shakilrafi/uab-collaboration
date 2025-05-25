@@ -1,0 +1,758 @@
+---
+title: "Parent W3 Scored"
+author: "Shakil Rafi"
+format: html
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: tibble
+comments:
+  hypothesis: true
+editor: visual
+---
+
+## Read Data
+
+```{r}
+library(tidyverse)
+data <- read_csv("parent_wave_3_scored.csv")
+```
+
+## EDA
+
+### Geographic Distribution and DOB
+
+```{r}
+#| eval: false
+library(tidyverse)
+library(tidygeocoder)
+library(maps)
+
+# Step 1: Clean the p3cpob field
+data_clean <- data |>
+  filter(!is.na(p3cpob)) |>
+  mutate(p3cpob_clean = str_to_title(p3cpob)) |>
+  mutate(p3cpob_clean = str_replace_all(p3cpob_clean, "\\s+", " "),
+         p3cpob_clean = str_remove_all(p3cpob_clean, "\\s+Usa|\\s+Us|\\s+Usa\\.?|\\s+Us\\.?"),
+         p3cpob_clean = str_remove_all(p3cpob_clean, ",\\s*$")) |>
+  mutate(p3cpob_clean = str_trim(p3cpob_clean)) 
+
+# Step 2: Extract unique cleaned locations
+unique_locations <- data_clean |>
+  distinct(p3cpob_clean)
+
+# Step 3: Geocode
+geocoded <- unique_locations |>
+  geocode(p3cpob_clean, method = "osm", lat = latitude , long = longitude)
+
+# Step 4: Merge geocodes back into the main data
+data_geo <- data_clean |>
+  left_join(geocoded, by = "p3cpob_clean")
+
+# Step 5: Plot using ggplot2
+us_map <- map_data("world")
+
+us_map |>
+ggplot() +
+  geom_polygon(aes(x = long, y = lat, group = group), 
+               fill = "gray90", color = "white") +
+  geom_point(data = data_geo, aes(x = longitude, y = latitude), 
+             color = "red", alpha = 0.7, size = 2) +
+  coord_fixed(1.3) +
+  theme_minimal() +
+  labs(title = "Place of Birth (p3cpob)", x = "Longitude", y = "Latitude")
+
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+
+# Step 1: Parse p3cdob as a date
+data <- data %>%
+  mutate(p3cdob = parse_date(p3cdob, format = "%m/%d/%Y"))  # Adjust format if necessary
+
+# Step 2: Extract year of birth
+data <- data %>%
+  filter(!is.na(p3cdob)) %>%
+  mutate(birth_year = year(p3cdob))
+
+# Step 3: Plot as a barplot
+data |>
+ggplot(aes(x = birth_year)) +
+  geom_bar(fill = "steelblue") +
+  theme_minimal() +
+  labs(
+    title = "Distribution of Child Date of Birth (p3cdob)",
+    x = "Year of Birth",
+    y = "Count"
+  )
+
+```
+
+### Descriptive Statistics
+
+```{r}
+data |> 
+  select(where(is.numeric)) |>
+  psych::describe()
+```
+
+### Normality Testing
+
+```{r}
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(RColorBrewer)
+
+# Load data
+data <- read.csv("parent_wave_3_scored.csv")
+
+# Psychometric variables
+psychometrics <- c(
+  "p3sp", "p3axdp", "p3wtd", "p3rbb", "p3agg", "p3smc",
+  "p3thpr", "p3atn", "p3pix", "p3ppx", "p3pmx"
+)
+
+# Subset and remove rows with NAs
+df <- data %>%
+  select(all_of(psychometrics)) %>%
+  na.omit()
+
+# Compute correlation matrix
+cor_matrix <- cor(df, use = "pairwise.complete.obs")
+
+# Melt into long format
+cor_melted <- melt(cor_matrix)
+
+# Plot heatmap
+ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(
+    low = "blue", high = "red", mid = "white",
+    midpoint = 0, limit = c(-1, 1), space = "Lab",
+    name = "Correlation"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(
+    title = "Correlation Heatmap of Psychometric Scores",
+    x = "", y = ""
+  )
+
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(scales)  # for hue_pal
+
+# Load your data
+psychometrics <- c(
+  "p3sp", "p3axdp", "p3wtd", "p3rbb", "p3agg", "p3smc",
+  "p3thpr", "p3atn", "p3pix", "p3ppx", "p3pmx"
+)
+
+# Psychometric variables with human-readable names
+psychometrics <- c(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Generate distinct pastel colors
+colors <- scales::hue_pal(h = c(0, 360) + 15, c = 30, l = 90)(length(psychometrics))
+
+# Loop through each variable
+i <- 1
+for (var in names(psychometrics)) {
+  label <- psychometrics[[var]]
+  p <- ggplot(data, aes(x = .data[[var]])) +
+    geom_density(fill = colors[i], alpha = 0.7, na.rm = TRUE) +
+    labs(
+      title = paste("Density of", label, "(", var,")"),
+      x = label,
+      y = "Density"
+    ) +
+    theme_minimal(base_size = 14)
+  print(p)
+  i <- i + 1
+}
+
+```
+
+#### Shapiro-Wilk
+
+```{r}
+results <- lapply(names(psychometrics), function(var) {
+  values <- data[[var]]
+  values <- values[!is.na(values)]
+  if (length(values) >= 3 && length(values) <= 5000) {
+    test <- shapiro.test(values)
+    tibble(
+      Variable = psychometrics[[var]],
+      W_statistic = test$statistic,
+      p_value = test$p.value
+    )
+  } else {
+    tibble(
+      Variable = psychometrics[[var]],
+      W_statistic = NA,
+      p_value = NA
+    )
+  }
+})
+
+# Combine into a data frame
+shapiro_results <- bind_rows(results)
+
+# Display results
+print(shapiro_results)
+```
+
+### Parent Education Levels Analysis
+
+```{r}
+library(ggplot2)
+
+# Load data
+df <- read.csv("parent_wave_3_scored.csv")
+
+# Variables to plot with human-friendly titles
+plot_vars <- list(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Loop through and generate pastel violin plots without legend
+for (var in names(plot_vars)) {
+  title <- plot_vars[[var]]
+  p <- ggplot(df, aes(x = as.factor(p3edu1), y = .data[[var]], fill = as.factor(p3edu1))) +
+    geom_violin(trim = FALSE) +
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+      title = paste(title, "by Parent 1 Edu Level (", var, ")"),
+      x = "Parent 1 Education Level",
+      y = title
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  print(p)
+}
+
+```
+
+```{r}
+library(ggplot2)
+
+# Load data
+df <- read.csv("parent_wave_3_scored.csv")
+
+# Variables to plot with human-friendly titles
+plot_vars <- list(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Loop through and generate pastel violin plots without legend
+for (var in names(plot_vars)) {
+  title <- plot_vars[[var]]
+  p <- ggplot(df, aes(x = as.factor(p3edu2), y = .data[[var]], fill = as.factor(p3edu2))) +
+    geom_violin(trim = FALSE) +
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black") +
+    scale_fill_brewer(palette = "Pastel2") +
+    labs(
+      title = paste(title, "by Parent 2 Edu Level (",var,")"),
+      x = "Parent 2 Education Level",
+      y = title
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  print(p)
+}
+```
+
+### Parent Marital Status
+
+```{r}
+library(ggplot2)
+
+# Load data
+df <- read.csv("parent_wave_3_scored.csv")
+
+# Variables to plot with human-friendly titles
+plot_vars <- list(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Loop through and generate pastel violin plots without legend
+for (var in names(plot_vars)) {
+  title <- plot_vars[[var]]
+  p <- ggplot(df, aes(x = as.factor(p3mar1), y = .data[[var]], fill = as.factor(p3mar1))) +
+    geom_violin(trim = FALSE) +
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+      title = paste(title, "by Mar Status (", var, ")"),
+      x = "Marital Status",
+      y = title
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  print(p)
+}
+```
+
+### ANOVA and Effect Size
+
+#### ANOVA vs p3edu
+
+```{r}
+
+# Psychometric variables (as before)
+psychometrics <- c(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p3edu1)")), data = data))
+  print(result)
+}
+
+```
+
+```{r}
+
+# Psychometric variables (as before)
+psychometrics <- c(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p3edu2)")), data = data))
+  print(result)
+}
+```
+
+#### ANOVA vs p3mar1
+
+```{r}
+# Psychometric variables (as before)
+psychometrics <- c(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p3mar1)")), data = data))
+  print(result)
+}
+```
+
+#### ANOVA vs p3emp
+
+```{r}
+# Psychometric variables (as before)
+psychometrics <- c(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p3emp1)")), data = data))
+  print(result)
+}
+```
+
+```{r}
+# Psychometric variables (as before)
+psychometrics <- c(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p3emp2)")), data = data))
+  print(result)
+}
+```
+
+#### Effect Size and Kruskal-Wallis vs p3edu
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("parent_wave_3_scored.csv")
+
+# Psychometric variables
+psychometrics <- c(
+  "p3sp", "p3axdp", "p3wtd", "p3rbb", "p3agg", "p3smc",
+  "p3thpr", "p3atn", "p3pix", "p3ppx", "p3pmx"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in psychometrics) {
+  formula <- as.formula(paste(var, "~ as.factor(p3edu1)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", var, "\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+
+```
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("parent_wave_3_scored.csv")
+
+# Psychometric variables
+psychometrics <- c(
+  "p3sp", "p3axdp", "p3wtd", "p3rbb", "p3agg", "p3smc",
+  "p3thpr", "p3atn", "p3pix", "p3ppx", "p3pmx"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in psychometrics) {
+  formula <- as.formula(paste(var, "~ as.factor(p3edu2)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", var, "\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+```
+
+#### Effect Size and Kruskal-Wallis vs p3mar1
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("parent_wave_3_scored.csv")
+
+# Psychometric variables
+psychometrics <- c(
+  "p3sp", "p3axdp", "p3wtd", "p3rbb", "p3agg", "p3smc",
+  "p3thpr", "p3atn", "p3pix", "p3ppx", "p3pmx"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in psychometrics) {
+  formula <- as.formula(paste(var, "~ as.factor(p3mar1)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", var, "\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+```
+
+#### Effect size and Kruskal-Wallis vs p3emp
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("parent_wave_3_scored.csv")
+
+# Psychometric variables
+psychometrics <- c(
+  "p3sp", "p3axdp", "p3wtd", "p3rbb", "p3agg", "p3smc",
+  "p3thpr", "p3atn", "p3pix", "p3ppx", "p3pmx"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in psychometrics) {
+  formula <- as.formula(paste(var, "~ as.factor(p3emp1)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", var, "\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+```
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("parent_wave_3_scored.csv")
+
+# Psychometric variables
+psychometrics <- c(
+  "p3sp", "p3axdp", "p3wtd", "p3rbb", "p3agg", "p3smc",
+  "p3thpr", "p3atn", "p3pix", "p3ppx", "p3pmx"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in psychometrics) {
+  formula <- as.formula(paste(var, "~ as.factor(p3emp2)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", var, "\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+```
+
+## General Linear Model
+
+```{r}
+# Load data
+data <- read.csv("parent_wave_3_scored.csv")
+
+# Psychometric outcome variables
+outcomes <- c(
+  "p3sp", "p3axdp", "p3wtd", "p3rbb", "p3agg", "p3smc",
+  "p3thpr", "p3atn", "p3pix", "p3ppx", "p3pmx"
+)
+
+# Predictor variables (example)
+predictors <- c("p3edu1", "p3incom", "p3pgen", "p3page", "p3mar1", "p3emp1", "p3chol1")
+
+# Loop through and fit model
+for (outcome in outcomes) {
+  formula <- as.formula(paste(outcome, "~", paste(predictors, collapse = " + ")))
+  model <- lm(formula, data = data)
+  
+  cat("\n===========================================\n")
+  cat("Linear Model Summary for", outcome, "\n")
+  cat("===========================================\n")
+  print(summary(model))
+}
+
+```
+
+```{r}
+library(randomForest)
+library(dplyr)
+library(ggplot2)
+
+# Load data
+data <- read.csv("parent_wave_3_scored.csv")
+
+# Psychometric outcomes with human-readable names
+psychometrics <- c(
+  p3sp   = "Sleep Problems",
+  p3axdp = "Anxiety/Depression",
+  p3wtd  = "Withdrawn/Depressed",
+  p3rbb  = "Rule-Breaking Behavior",
+  p3agg  = "Aggressive Behavior",
+  p3smc  = "Somatic Complaints",
+  p3thpr = "Thought Problems",
+  p3atn  = "Attention Problems",
+  p3pix  = "Parent Internalizing Index",
+  p3ppx  = "Parent Externalizing Index",
+  p3pmx  = "Parent Total Problems Index"
+)
+
+# Predictor variable labels (customize these based on your data dictionary)
+predictor_labels <- c(
+  p3edu1  = "Education Level",
+  p3incom = "Household Income",
+  p3pgen  = "Parent Gender",
+  p3page  = "Parent Age",
+  p3mar1  = "Marital Status of Parent 1",
+  p3emp1  = "Employment Status of Parent 1",
+  p3chol1 = "Child Health Insurance"
+)
+
+# Convert character predictors to factors
+data <- data %>%
+  mutate(across(all_of(names(predictor_labels)), ~ if (is.character(.x) || is.factor(.x)) as.factor(.x) else .x))
+
+# Loop through each psychometric variable
+for (var in names(psychometrics)) {
+  outcome_label <- psychometrics[[var]]
+  formula <- as.formula(paste(var, "~", paste(names(predictor_labels), collapse = " + ")))
+  df <- data[, c(var, names(predictor_labels))] %>% na.omit()
+  
+  rf <- randomForest(formula, data = df, importance = TRUE)
+  importance_df <- as.data.frame(importance(rf))
+  importance_df$Variable <- rownames(importance_df)
+  
+  # Replace predictor names with human-readable labels
+  importance_df <- importance_df %>%
+    mutate(Predictor_Label = paste0(predictor_labels[Variable], " (", Variable, ")")) %>%
+    arrange(desc(`%IncMSE`))
+  
+  # Plot
+  ggplot(importance_df, aes(x = reorder(Predictor_Label, `%IncMSE`), y = `%IncMSE`)) +
+    geom_col(fill = "steelblue") +
+    coord_flip() +
+    labs(
+      title = paste("Variable Importance for", outcome_label, "(", var, ")"),
+      x = "Predictor",
+      y = "% Increase in MSE (Importance)"
+    ) +
+    theme_minimal(base_size = 14) -> p
+  
+  print(p)
+}
+
+```

@@ -1,0 +1,23 @@
+
+Data Dictionary for w1-teacher-student-scored-aggregated.csv
+
+| Column      | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| SID         | Student ID (anonymized unique identifier)                                   |
+| ts1axdp     | Teacher Score 1: Anxiety/Depression – Possible rating of student affect     |
+| ts1dep      | Teacher Score 1: Depression – Specific subscore on depressive behaviors     |
+| ts1smc      | Teacher Score 1: Self-Management/Control – Impulse or behavioral control     |
+| ts1sopr     | Teacher Score 1: Social Problems – Peer relationships or social conduct     |
+| ts1agg      | Teacher Score 1: Aggression – Level of observed aggressive behavior         |
+| ts1att      | Teacher Score 1: Attention – How attentive the student is                   |
+| ts1inp      | Teacher Score 1: Involvement/Participation – Engagement in class            |
+| ts1mtv      | Teacher Score 1: Motivation – Perceived student motivation                  |
+| ts1eng      | Teacher Score 1: Engagement – Academic or behavioral engagement             |
+| ts1ssk      | Teacher Score 1: Social Skills – Cooperation, empathy, etc.                 |
+| ts1mth      | Teacher Score 1: Math Performance – Teacher-rated math ability              |
+| ts1read     | Teacher Score 1: Reading Performance – Teacher-rated reading ability        |
+| ts1crit     | Teacher Score 1: Critical Thinking – Judgment and reasoning skill level     |
+| ts1skl      | Teacher Score 1: Overall Skills Composite – Academic + social skills         |
+| ts1enab     | Teacher Score 1: Enabling Behaviors – Positive behaviors that support growth|
+| ts1cls      | Teacher Score 1: Classroom Behavior – General behavior in classroom context |
+| ts1cnf      | Teacher Score 1: Confidence – Student’s confidence level                    |

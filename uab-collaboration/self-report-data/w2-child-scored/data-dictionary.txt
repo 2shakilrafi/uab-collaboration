@@ -1,0 +1,39 @@
+Data Dictionary for w2-child-scored.csv
+
+SID: Subject ID
+c2init: Initials or code name of child
+c2stid: Site or study ID
+c2demB: Demographic background (possibly race/ethnicity or coded categories)
+VAR00001: Unspecified variable (possibly a scale score or question response)
+COVID: COVID-related status or indicator
+c2isq_val: ISQ (Internalizing Symptoms Questionnaire) - values
+c2isq_bel: ISQ - beliefs
+c2ace: Adverse Childhood Experiences score (cognitive/emotional)
+c2abe: Adverse Childhood Experiences score (behavioral/emotional)
+c2pdssx: Pediatric Symptom Score - symptoms
+c2agg: Aggression score
+c2axdp: Anxiety/Depression composite score
+c2rbb: Rule-breaking behavior score
+c2sopro: Social problems score
+c2fis: Functional impairment score
+c2fix: Fixation or compulsive behavior score
+c2eiaf: Emotional instability - affective
+c2eiex: Emotional instability - externalizing
+c2eirs: Emotional instability - response sensitivity
+c2espm: Emotional sensitivity - positive mood
+c2espb: Emotional sensitivity - behavior
+c2escs: Emotional sensitivity - cognitive symptoms
+c2ds: Depressive symptoms score
+c2rh: Rumination or hopelessness score
+c2vesx: Vestibular symptoms - external
+c2venx: Vestibular symptoms - internal
+c2vehx: Vestibular symptoms - history
+c2vess: Vestibular symptoms - severity score
+c2vens: Vestibular symptoms - number of symptoms
+c2vehs: Vestibular symptoms - high severity
+c2pss: Perceived stress score
+c2pain1: Pain score 1 (general or first area)
+c2pain2: Pain score 2 (second area)
+c2pain3: Pain score 3 (third area)
+c2pain4: Pain score 4 (fourth area)
+c2pain5: Pain score 5 (total or most severe)

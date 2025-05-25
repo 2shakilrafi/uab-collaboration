@@ -1,0 +1,3 @@
+Target,MSE,R2,BestParams
+kcals,1797276.673198991,0.9299886747808151,"{'regressor__learning_rate': 0.1, 'regressor__max_depth': 6, 'regressor__n_estimators': 150, 'regressor__subsample': 0.5}"
+Averagekcalsperday,12492.199277880158,0.9675241131110337,"{'regressor__learning_rate': 0.1, 'regressor__max_depth': 3, 'regressor__n_estimators': 250, 'regressor__subsample': 0.5}"

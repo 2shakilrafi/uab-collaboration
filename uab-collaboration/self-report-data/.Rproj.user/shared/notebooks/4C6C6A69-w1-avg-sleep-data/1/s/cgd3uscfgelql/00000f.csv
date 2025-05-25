@@ -1,0 +1,10 @@
+"0","library(tidyverse)"
+"0",""
+"0","data <- read_csv(""W1_AvgSleepData.csv"")"
+"2","[1mRows: [22m[34m288[39m [1mColumns: [22m[34m16[39m"
+"2","[36m──[39m [1mColumn specification[22m [36m───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────[39m
+[1mDelimiter:[22m "",""
+[32mdbl[39m (16): SID, c1remove, c1wakeall, c1wakeWE, c1wakeWD, c1bedall, c1bedWE, c1bedWD, c1wakDif, c1bedDifMin, c1TSTAl, c1TSTWE, c1TSTWD, c1TMIBWE, c1T..."
+"2","
+[36mℹ[39m Use `spec()` to retrieve the full column specification for this data.
+[36mℹ[39m Specify the column types or set `show_col_types = FALSE` to quiet this message."

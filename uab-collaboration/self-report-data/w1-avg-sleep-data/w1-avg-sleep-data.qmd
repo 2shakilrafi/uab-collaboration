@@ -1,0 +1,228 @@
+---
+title: "W1 Avg Sleep Data"
+format: html
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: tibble
+comments:
+  hypothesis: true
+editor: visual
+---
+
+## Read Data
+
+```{r}
+library(tidyverse)
+
+data <- read_csv("W1_AvgSleepData.csv")
+```
+
+## EDA
+
+```{r}
+library(tidyverse)
+
+# Load the data
+df <- read_csv("W1_AvgSleepData.csv")
+
+# Step 1: Remove 'SID' and 'c1remove'
+sleep_vars <- names(df)[!names(df) %in% c("SID", "c1remove")]
+
+# Step 2: Create a named list of interpretations
+var_descriptions <- list(
+  c1wakeall = "Average wake time across all days",
+  c1wakeWE = "Average wake time on weekends",
+  c1wakeWD = "Average wake time on weekdays",
+  c1bedall = "Average bedtime across all days",
+  c1bedWE = "Average bedtime on weekends",
+  c1bedWD = "Average bedtime on weekdays",
+  c1wakDif = "Difference in wake time (weekend - weekday)",
+  c1bedDifMin = "Difference in bedtime (weekend - weekday)",
+  c1TSTAl = "Total sleep time across all days (in minutes)",
+  c1TSTWE = "Total sleep time on weekends (in minutes)",
+  c1TSTWD = "Total sleep time on weekdays (in minutes)",
+  c1TMIBWE = "Time in bed on weekends (in minutes)",
+  c1TMIBALL = "Time in bed across all days (in minutes)",
+  c1TMIBWD = "Time in bed on weekdays (in minutes)"
+)
+
+# Step 3: Plot each variable with interpretation as title
+for (var in sleep_vars) {
+  title_text <- if (!is.null(var_descriptions[[var]])) {
+    paste0(var_descriptions[[var]], " (", var, ")")
+  } else {
+    paste("Sleep Variable", "(", var, ")")
+  }
+  
+  p <- ggplot(df, aes(x = .data[[var]])) +
+    geom_density(fill = "skyblue", alpha = 0.6) +
+    theme_minimal() +
+    labs(title = title_text, x = var, y = "Density")
+  
+  print(p)
+}
+
+```
+
+```{r}
+library(tidyverse)
+
+# Load the data
+df <- read_csv("W1_AvgSleepData.csv")
+
+# Select variables to test (excluding SID and c1remove)
+test_vars <- names(df)[!names(df) %in% c("SID", "c1remove")]
+
+# Run Shapiro-Wilk test on each variable and print results
+for (var in test_vars) {
+  values <- df[[var]]
+  values <- values[!is.na(values)]  # Remove NAs
+  
+  if (length(values) >= 3 && length(values) <= 5000) {
+    test_result <- shapiro.test(values)
+    cat("\nVariable:", var, "\n",
+        "W =", round(test_result$statistic, 4), 
+        "| p-value =", format.pval(test_result$p.value, digits = 4), "\n")
+  } else {
+    cat("\nVariable:", var, "\n",
+        "Shapiro-Wilk test skipped (requires 3-5000 non-NA values). Sample size:", length(values), "\n")
+  }
+}
+
+```
+
+```{r}
+# Load required libraries
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(scales)
+
+# Read and preprocess the data
+df <- read_csv("W1_AvgSleepData.csv")
+
+# Remove 'SID' and 'c1remove', scale the rest
+scaled_df <- df %>%
+  select(-SID, -c1remove) %>%
+  scale()
+
+# Compute correlation matrix
+cor_mat <- cor(scaled_df, use = "pairwise.complete.obs")
+
+# Convert to long format for ggplot
+cor_df <- as.data.frame(as.table(cor_mat))
+colnames(cor_df) <- c("Var1", "Var2", "Correlation")
+
+# Create the heatmap
+ggplot(cor_df, aes(x = Var1, y = Var2, fill = Correlation)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", 
+                       midpoint = 0, limit = c(-1, 1), space = "Lab",
+                       name = "Correlation") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank(),
+        axis.title = element_blank()) +
+  coord_fixed() +
+  labs(title = "Correlation Heatmap (Scaled Data)")
+
+```
+
+## Linear Models
+
+```{r}
+# Load required libraries
+library(randomForest)
+library(tidyverse)
+
+# Read data
+df <- read.csv("W1_AvgSleepData.csv")
+
+# Remove SID and c1remove
+df <- df %>% select(-SID, -c1remove)
+
+# Drop rows with any NA values
+df_clean <- df %>% drop_na()
+
+# Scale all columns
+scaled_df <- scale(df_clean) %>% as.data.frame()
+
+# Initialize result storage
+results <- list()
+
+# Loop through each column as target
+for (target in colnames(scaled_df)) {
+  
+  predictors <- setdiff(colnames(scaled_df), target)
+  
+  # Create formula
+  formula <- as.formula(paste(target, "~", paste(predictors, collapse = "+")))
+  
+  # Fit random forest
+  rf_model <- randomForest(formula, data = scaled_df, importance = TRUE)
+  
+  # Get R-squared and importance
+  rsq <- rf_model$rsq[length(rf_model$rsq)]
+  importance_vals <- importance(rf_model)
+  
+  results[[target]] <- list(
+    target = target,
+    predictors = predictors,
+    r_squared = rsq,
+    importance = importance_vals
+  )
+}
+
+# Summarize R-squared values
+r_squared_summary <- tibble(
+  Target = names(results),
+  R_squared = sapply(results, function(x) x$r_squared)
+)
+
+# Display sorted by R² descending
+print(r_squared_summary %>% arrange(desc(R_squared)))
+
+```
+
+```{r}
+# Load plotting library
+library(ggplot2)
+
+# Create a folder to save plots (optional)
+dir.create("feature_importance_plots", showWarnings = FALSE)
+
+# Loop through each result and plot importance
+for (res in results) {
+  
+  # Get importance data
+  imp_df <- as.data.frame(res$importance)
+  imp_df$Predictor <- rownames(imp_df)
+  imp_df <- imp_df %>% 
+    rename(Importance = `%IncMSE`) %>% 
+    arrange(desc(Importance))
+  
+  # Create plot
+  p <- ggplot(imp_df, aes(x = reorder(Predictor, Importance), y = Importance, fill = Importance)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    scale_fill_gradient(low = "skyblue", high = "darkblue") +
+    labs(title = paste("Feature Importance for Predicting", res$target),
+         x = "Predictor",
+         y = "% Increase in MSE when Removed") +
+    theme_minimal(base_size = 12) +
+    theme(legend.position = "none",
+          axis.text.y = element_text(size = 10))
+  
+  # Print the plot (if in interactive mode)
+  print(p)
+  
+  # Save each plot to disk
+  ggsave(filename = paste0("feature_importance_plots/", res$target, "_importance.png"),
+         plot = p, width = 8, height = 5, dpi = 300)
+}
+
+```

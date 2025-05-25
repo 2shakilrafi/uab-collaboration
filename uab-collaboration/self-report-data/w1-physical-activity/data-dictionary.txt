@@ -1,0 +1,66 @@
+Subject: Unique identifier for each participant.
+Filename: Raw data filename from the wearable device.
+Epoch: Time interval (in seconds) for data aggregation.
+Weightlbs: Participant's weight in pounds.
+Age: Participant's age in years.
+Gender: Participant's gender (sparse data).
+kcals: Total calories burned.
+Averagekcalsperday: Average daily calories burned.
+Averagekcalsperhour: Average hourly calories burned.
+METs: Metabolic Equivalent of Task (energy expenditure).
+Freedson1998Bouts: Number of activity bouts (Freedson 1998 thresholds).
+TotalTimeinFreedson1998Bouts: Total time spent in Freedson-defined activity bouts.
+AvgTimeperFreedson1998Bout: Average time per Freedson activity bout.
+MaxTimeperFreedson1998Bout: Maximum time in a single Freedson bout.
+MinTimeperFreedson1998Bout: Minimum time in a single Freedson bout.
+TotalCountsinFreedson1998Bouts: Total activity counts in Freedson bouts.
+TotalSedentaryBouts: Number of sedentary bouts.
+TotalTimeinSedentaryBouts: Total time spent in sedentary bouts.
+AverageLengthofSedentaryBouts: Average length of sedentary bouts.
+MaximumLengthofSedentaryBouts: Maximum sedentary bout duration.
+MinimumLengthofSedentaryBouts: Minimum sedentary bout duration.
+DailyAverageofSedentaryBouts: Average number of sedentary bouts per day.
+TotalSedentaryBreaks: Number of breaks in sedentary behavior.
+TotalTimeinSedentaryBreaks: Total time spent in sedentary breaks.
+AveragelengthofSedentaryBreaks: Average duration of sedentary breaks.
+MaxLengthofSedentaryBreaks: Maximum duration of a sedentary break.
+MinimumLengthofSedentaryBreaks: Minimum duration of a sedentary break.
+DailyAverageofSedentaryBreaks: Average number of sedentary breaks per day.
+Sedentary: Total sedentary time (minutes).
+Light: Total light activity time (minutes).
+Moderate: Total moderate activity time (minutes).
+Vigorous: Total vigorous activity time (minutes).
+VeryVigorous: Total very vigorous activity time (minutes).
+inSedentary: Epoch-wise record of sedentary activity.
+inLight: Epoch-wise record of light activity.
+inModerate: Epoch-wise record of moderate activity.
+inVigorous: Epoch-wise record of vigorous activity.
+inVeryVigorous: Epoch-wise record of very vigorous activity.
+TotalMVPA: Total time spent in moderate-to-vigorous physical activity.
+inMVPA: Epoch-wise record of MVPA activity.
+AverageMVPAperday: Average MVPA time per day.
+Axis1Counts: Cumulative movement counts on accelerometer axis 1.
+Axis2Counts: Cumulative movement counts on axis 2.
+Axis3Counts: Cumulative movement counts on axis 3.
+Axis1AverageCounts: Average movement counts on axis 1.
+Axis2AverageCounts: Average movement counts on axis 2.
+Axis3AverageCounts: Average movement counts on axis 3.
+Axis1MaxCounts: Maximum movement count on axis 1 in any epoch.
+Axis2MaxCounts: Maximum count on axis 2.
+Axis3MaxCounts: Maximum count on axis 3.
+Axis1CPM: Counts per minute on axis 1.
+Axis2CPM: Counts per minute on axis 2.
+Axis3CPM: Counts per minute on axis 3.
+VectorMagnitudeCounts: Cumulative vector magnitude (3D movement).
+VectorMagnitudeAverageCounts: Average vector magnitude counts.
+VectorMagnitudeMaxCounts: Maximum vector magnitude.
+VectorMagnitudeCPM: Vector magnitude counts per minute.
+StepsCounts: Total number of steps recorded.
+StepsAverageCounts: Average number of steps per minute.
+StepsMaxCounts: Maximum steps in a single minute.
+StepsPerMinute: Steps per minute metric.
+LuxAverageCounts: Average light exposure (lux).
+LuxMaxCounts: Maximum light exposure (lux).
+NumberofEpochs: Number of data epochs recorded.
+Time: Total monitoring time (in minutes).
+CalendarDays: Total calendar days monitored.

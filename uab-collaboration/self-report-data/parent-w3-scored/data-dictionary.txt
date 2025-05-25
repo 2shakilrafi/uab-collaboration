@@ -1,0 +1,29 @@
+
+Psychometric Outcomes
+
+| Variable | Description                      |
+|----------|----------------------------------|
+| p3sp     | Sleep Problems                   |
+| p3axdp   | Anxiety/Depression               |
+| p3wtd    | Withdrawn/Depressed              |
+| p3rbb    | Rule-Breaking Behavior           |
+| p3agg    | Aggressive Behavior              |
+| p3smc    | Somatic Complaints               |
+| p3thpr   | Thought Problems                 |
+| p3atn    | Attention Problems               |
+| p3pix    | Parent Internalizing Index       |
+| p3ppx    | Parent Externalizing Index       |
+| p3pmx    | Parent Total Problems Index      |
+
+
+Predictor Variables
+
+| Variable | Description                          |
+|----------|--------------------------------------|
+| p3edu1   | Education Level                      |
+| p3incom  | Household Income                     |
+| p3pgen   | Parent Gender                        |
+| p3page   | Parent Age                           |
+| p3mar1   | Marital Status of Parent 1           |
+| p3emp1   | Employment Status of Parent 1        |
+| p3chol1  | Child Health Insurance               |

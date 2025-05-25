@@ -1,0 +1,38 @@
+---
+title: "Preliminary Findings"
+author: Shakil Rafi
+institute: University of Arkansas
+transition: slide
+smaller: true
+scrollable: true
+format: revealjs
+editor: visual
+---
+
+# Sleep
+
+## W1 Avg Sleep Data
+
+{{< include w1-avg-sleep-data.qmd >}}
+
+------------------------------------------------------------------------
+
+## W2 Avg Sleep Data
+
+# Physical Activity
+
+## W1 Physical Activity
+
+{{< include w1-physical-activity.qmd >}}
+
+## W2 Physical Activity
+
+{{< include w2-physical-activity.qmd  >}}
+
+# Parent Scored
+
+## W1 Parent Scored
+
+{{< include w1-parent-scored.qmd >}}
+
+## W2 Parent Scored

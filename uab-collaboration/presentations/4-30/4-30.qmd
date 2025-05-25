@@ -1,0 +1,178 @@
+---
+title: "Preliminary Findings"
+author: Shakil Rafi
+format: revealjs
+editor: visual
+transition: slide
+lightbox: true
+smaller: true
+scrollable: true
+toc: true
+bibliography: references.bib
+---
+
+# Sleep
+
+## W1 Sleep Data
+
+-   Strong positive correlations between C1TMIBWD c1TMIBALL.
+
+-   Strong negative correlation between c1TMIBWD and c1bedall and c1bedWD
+
+![](images/unnamed-chunk-4-1.png)
+
+Predictive modeling shows strong predictive power for c1PMIBWD and c1TMIBWE with Random Forest Models.
+
+![](images/unnamed-chunk-6-13.png)
+
+## W2 Sleep Data
+
+-   Strong correlation with c2stall and c2TMIBALL
+
+-   Strong corrlation between c2WAKEALL and c2BEDALL.
+
+-   Block Diagonal Structure
+
+![](images/unnamed-chunk-5-1.png)
+
+Indicated by the following plots:
+
+![](images/unnamed-chunk-6-1-01.png)
+
+![](images/unnamed-chunk-6-6.png)
+
+------------------------------------------------------------------------
+
+### Supervised Models
+
+#### XGBoost
+
+XGBoost feaure importances. Note that all predictors have $R^2 > 0.85$
+
+![](images/unnamed-chunk-7-1.png)
+
+#### GLM
+
+GLM shows the following feature importances. Again \$R\^2 \> 0.85\$
+
+![](images/unnamed-chunk-8-1.png)
+
+### Unsupervised Models
+
+#### PCA+K-Means
+
+![](images/unnamed-chunk-9-2.png)
+
+#### UMAP+HDBSCAN
+
+![](images/unnamed-chunk-13-1.png)
+
+## Aggregate W3 Sleep Data
+
+Strong correlation of c3sleff with c3tstall
+
+![](images/unnamed-chunk-7-1-01.png)
+
+# Parent Scored
+
+## W1
+
+Strong banding effects seen
+
+![](images/unnamed-chunk-6-1-02.png)
+
+ANOVA shows:
+
+-   Significant difference in p1sp, p1wtd, p1smc, p1thpr, p1pix, p1pmsx by p1edu1
+
+-   Significant difference in p1sp, p1wtd, p1rbb,p1atnpr, p1pix, p1pmsx by p1edu2
+
+-   Significant between group differences in p1anxdb, and p1smc , p1pix, and p1ppx by p1emp1
+
+-   Significant between group differences in p1sp, p1wtd, p1rbb, p1atnpr, p1pix, p1pmsx by p1edu2
+
+-   Effect sizes (\$\\eta\^2\$) are moderate-to-low (\$\<0.10\$)
+
+## W3
+
+-   Significant difference in p3sp, by p3edu1
+
+-   Significant difference in p3smc by p3edu2
+
+-   Significant difference in p3sp, p3smc, p3thpr by p3mar1
+
+-   Significant difference in p3rbb, p3smc, p3atn by p3emp1
+
+-   Effect sizes (\$\\eta\^2\$) are moderate-to-low (\$\<0.10\$)
+
+# Physical Activity
+
+## W1
+
+-   Statistically significant group differents in METs, AvgTimeperFreedson, Light and Moderate Exercise, TotalMVPA, AverageMVPAperday, Axis1movements, Axis1CPM
+
+-   Small effect size $\eta^2 < 0.1$.
+
+Clustering effects:
+
+![](images/unnamed-chunk-10-2.png)
+
+## W2
+
+Strong block diagonal structure, indicating strongly correlated variables
+
+![](images/unnamed-chunk-6-1-03.png)
+
+# W2 Child Scored
+
+Covid was a strong indicator for the following variables:
+
+![](images/unnamed-chunk-6-1-04.png)
+
+------------------------------------------------------------------------
+
+Under a random forest regression was a strong predictor of c2isq_bel, c2ace, c2pdssx
+
+![](images/unnamed-chunk-9-3.png)
+
+![](images/unnamed-chunk-9-4.png)
+
+![](images/unnamed-chunk-9-6.png)
+
+# W1 Full Battery Scored
+
+-   c1tminall and c1tminwd are strong predictors of each other
+
+![](images/unnamed-chunk-7-1-03.png)
+
+![](images/unnamed-chunk-7-2.png)
+
+# W3PA
+
+-   Strong correlation between step related metrics.
+
+-   Weak inverse correlation between TotalSedentaryBouts and StepsMaxCounts
+
+![](images/unnamed-chunk-5-1-01.png)
+
+Steps are consistently the strongest predictor for weight
+
+![](images/unnamed-chunk-7-1-02.png)
+
+# W2 Teacher Student Scored Aggregated
+
+-   Strong banding structure indicating strong within group correlation vs outside group correlation
+
+![](images/unnamed-chunk-5-1-02.png)
+
+XGBoost shows ts2mth as a strong predictor for ts2axdb
+
+![](images/unnamed-chunk-6-1-05.png)
+
+We have clustering using PCA+ k-Means (k=3)
+
+![](images/unnamed-chunk-9-2-01.png)
+
+UMAP + HDBSCAN yields five clusters
+
+![](images/unnamed-chunk-13-1-01.png)

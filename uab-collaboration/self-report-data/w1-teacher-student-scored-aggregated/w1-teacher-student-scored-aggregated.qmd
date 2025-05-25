@@ -1,0 +1,113 @@
+---
+title: "W1 Teacher Student Scored Aggregated"
+author: "Shakil Rafi"
+format: html
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: tibble
+comments:
+  hypothesis: true
+editor: visual
+---
+
+## Reading Data
+
+```{r}
+library(tidyverse)
+data <- read_csv("w1-teacher-student-scored-aggregated.csv")
+```
+
+```{r}
+
+
+# Remove non-relevant columns
+data_clean <- data |> 
+  select(-SID)
+
+# Select only numeric columns
+numeric_df <- data_clean |> 
+  select(where(is.numeric))
+
+# Loop through numeric columns and display density plots
+for (col_name in colnames(numeric_df)) {
+  p <- ggplot(numeric_df, aes_string(x = col_name)) +
+    geom_density(fill = "steelblue", alpha = 0.6) +
+    labs(title = paste("Density Plot of", col_name),
+         x = col_name,
+         y = "Density") +
+    theme_minimal()
+
+  print(p)
+}
+```
+
+### Shapiro Test
+
+```{r}
+shapiro_results <- map_dfr(names(numeric_df), function(var) {
+  values <- numeric_df[[var]]
+  if (length(unique(values)) < 3) {
+    tibble(Variable = var, W = NA, p_value = NA, Note = "Too few unique values")
+  } else {
+    test <- shapiro.test(values)
+    tibble(Variable = var, W = round(test$statistic, 10), p_value = round(test$p.value, 10), Note = NA)
+  }
+})
+
+shapiro_results
+
+```
+
+```{r}
+data_clean |> 
+  psych::describe()
+```
+
+```{r}
+library(reshape2)
+cor_matrix <- cor(data_clean, use = "pairwise.complete.obs")
+
+# Melt into long format
+cor_melted <- melt(cor_matrix)
+
+# Plot heatmap
+ggplot(cor_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(
+    low = "blue", high = "red", mid = "white",
+    midpoint = 0, limit = c(-1, 1), space = "Lab",
+    name = "Correlation"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(
+    title = "Correlation Heatmap",
+    x = "", y = ""
+  )
+```
+
+```{r}
+# Step 1: Compute correlation matrix
+cor_mat <- cor(data_clean)
+
+# Step 2: Convert to long format
+library(tidyr)
+library(dplyr)
+
+cor_long <- as.data.frame(as.table(cor_mat)) %>%
+  rename(Var1 = Var1, Var2 = Var2, Correlation = Freq)
+
+# Step 3: Filter pairs with |correlation| > 0.6, and remove self-correlations and duplicates
+strong_corrs <- cor_long %>%
+  filter(abs(Correlation) > 0.6, Var1 != Var2) %>%
+  rowwise() %>%
+  mutate(pair = paste(sort(c(Var1, Var2)), collapse = "_")) %>%
+  distinct(pair, .keep_all = TRUE) %>%
+  select(-pair)
+
+print(strong_corrs)
+write_csv(strong_corrs, "strong_corrs.csv")
+
+```

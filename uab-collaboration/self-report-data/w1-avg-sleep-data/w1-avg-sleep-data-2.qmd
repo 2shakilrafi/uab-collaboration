@@ -1,0 +1,188 @@
+---
+title: "Aggregated W3 Sleep Data"
+author: "Shakil Rafi"
+format: html
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: tibble
+comments:
+  hypothesis: true
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(haven)
+
+data <- read_sav("W1_AvgSleepData.sav")
+
+# View variable labels
+var_labels <- sapply(data, function(x) attr(x, "label"))
+print(var_labels)
+
+# View value labels (for categorical variables)
+val_labels <- lapply(data, function(x) attr(x, "labels"))
+print(val_labels)
+```
+
+```{r}
+# Replace column names with variable labels where available
+names(data) <- ifelse(
+  !is.na(var_labels) & var_labels != "",
+  var_labels,
+  names(data) # fallback to original name if label is missing
+)
+
+```
+
+```{r}
+data |> janitor::clean_names() -> data
+```
+
+```{r}
+data |> naniar::vis_miss()
+data |> naniar::gg_miss_upset()
+```
+
+```{r}
+data |> skimr::skim()
+```
+
+```{r, fig.width=10, fig.height=8}
+data |>
+    select(-null, -null_2) |>
+    corrr::correlate() |>
+    corrr::network_plot()
+```
+
+## C1 Avg Time on Bed on Weekends
+
+```{r}
+library(tidymodels)
+
+# Step 1: Drop rows with missing target
+data_clean <- data |>
+    select(-null, -null_2) |>
+  filter(!is.na(c1_avg_time_on_bed_on_weekends))
+
+# Step 2: Train/test split before any preprocessing
+set.seed(123)
+split <- initial_split(data_clean, prop = 0.85)
+train_data <- training(split)
+test_data  <- testing(split)
+
+# Step 3: Recipe with correlation filter added
+rf_recipe <- recipe(c1_avg_time_on_bed_on_weekends ~ ., data = train_data) |>
+  step_impute_mean(all_numeric_predictors()) |>       # Impute numeric vars
+  step_impute_mode(all_nominal_predictors()) |>       # Impute categorical vars
+  step_dummy(all_nominal_predictors()) |>             # One-hot encode factors
+  step_corr(all_numeric_predictors(), threshold = 0.8)  # Drop highly correlated predictors
+
+# Step 4: Random forest with permutation importance
+rf_model <- rand_forest(
+  mode = "regression",
+  mtry = 5,
+  trees = 1000,
+  min_n = 5
+) |>
+  set_engine("ranger", importance = "permutation")
+
+# Step 5: Build workflow
+rf_wf <- workflow() |>
+  add_recipe(rf_recipe) |>
+  add_model(rf_model)
+
+# Step 6: Fit to training data
+rf_fit <- fit(rf_wf, data = train_data)
+
+# Step 7: Predict on test data
+rf_preds <- predict(rf_fit, new_data = test_data) |>
+  bind_cols(test_data |> select(c1_avg_time_on_bed_on_weekends))
+
+# Step 8: Evaluate
+metrics(rf_preds, truth = c1_avg_time_on_bed_on_weekends, estimate = .pred)
+
+# Step 9: Plot variable importance
+library(vip)
+
+rf_final_model <- extract_fit_parsnip(rf_fit)
+vip(rf_final_model$fit, num_features = 20) + theme_minimal()
+
+```
+
+```{r}
+prep(rf_recipe) |> tidy(number = 4)  # step_corr is the 3rd step
+
+```
+
+```{r}
+library(tidymodels)
+
+# --- Step 0: Combine highly correlated numeric predictors before recipe ---
+combine_correlated <- function(df, threshold = 0.8) {
+  numeric_vars <- df |> select(where(is.numeric)) |> select(-c1_avg_time_on_bed_on_weekends)
+  cor_matrix <- cor(numeric_vars, use = "pairwise.complete.obs")
+  cor_matrix[lower.tri(cor_matrix, diag = TRUE)] <- NA
+  
+  high_corr_pairs <- which(abs(cor_matrix) > threshold, arr.ind = TRUE)
+  
+  vars_to_drop <- c()
+  for (i in seq_len(nrow(high_corr_pairs))) {
+    var1 <- colnames(cor_matrix)[high_corr_pairs[i, 1]]
+    var2 <- colnames(cor_matrix)[high_corr_pairs[i, 2]]
+    new_col <- paste0(var1, "_", var2, "_avg")
+    df[[new_col]] <- rowMeans(df[, c(var1, var2)], na.rm = TRUE)
+    vars_to_drop <- c(vars_to_drop, var1, var2)
+  }
+
+  # Drop original vars only if they were combined
+  vars_to_keep <- setdiff(names(df), vars_to_drop)
+  df[, vars_to_keep]
+}
+
+# Step 1: Clean and combine highly correlated predictors
+data_clean <- data |>
+  select(-null, -null_2) |>
+  filter(!is.na(c1_avg_time_on_bed_on_weekends)) |>
+  combine_correlated(threshold = 0.8)
+
+# Step 2: Train/test split
+set.seed(123)
+split <- initial_split(data_clean, prop = 0.85)
+train_data <- training(split)
+test_data  <- testing(split)
+
+# Step 3: Recipe (no more step_corr)
+rf_recipe <- recipe(c1_avg_time_on_bed_on_weekends ~ ., data = train_data) |>
+  step_impute_mean(all_numeric_predictors()) |>
+  step_impute_mode(all_nominal_predictors()) |>
+  step_dummy(all_nominal_predictors())
+
+# Step 4: RF model
+rf_model <- rand_forest(
+  mode = "regression",
+  mtry = 5,
+  trees = 1000,
+  min_n = 5
+) |>
+  set_engine("ranger", importance = "permutation")
+
+# Step 5–9: Same as before
+rf_wf <- workflow() |>
+  add_recipe(rf_recipe) |>
+  add_model(rf_model)
+
+rf_fit <- fit(rf_wf, data = train_data)
+
+rf_preds <- predict(rf_fit, new_data = test_data) |>
+  bind_cols(test_data |> select(c1_avg_time_on_bed_on_weekends))
+
+metrics(rf_preds, truth = c1_avg_time_on_bed_on_weekends, estimate = .pred)
+
+library(vip)
+rf_final_model <- extract_fit_parsnip(rf_fit)
+vip(rf_final_model$fit, num_features = 20) + theme_minimal()
+
+```

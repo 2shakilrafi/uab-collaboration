@@ -1,0 +1,102 @@
+---
+title: "Aggregated W3 Sleep Data"
+author: "Shakil Rafi"
+format: html
+toc: true
+toc-depth: 4
+lightbox: true
+title-block-banner: true
+df-print: tibble
+comments:
+  hypothesis: true
+editor: visual
+---
+
+## Read Data
+
+```{r}
+library(tidyverse)
+data <- read_csv("aggregated-w3-sleep.csv")
+```
+
+## Density Plots
+
+```{r}
+data |>
+  ggplot(aes(x = c3tstall)) +
+    geom_density(fill = "lightblue", alpha = 0.5) +
+    labs(
+      title = "Probability Density Plot of Stall Time",
+      x = "Stall Time (c3tstall)",
+      y = "Density"
+    ) +
+    theme_minimal()
+```
+
+```{r}
+data |>
+  ggplot(aes(x = c3sleff)) +
+    geom_density(fill = "lightblue", alpha = 0.5) +
+    labs(
+      title = "Probability Density Plot of Sleep Efficiency",
+      x = "Stall Time (c3tstall)",
+      y = "Density"
+    ) +
+    theme_minimal()
+```
+
+```{r}
+data |>
+  ggplot(aes(sample = c3tstall)) +
+  stat_qq(color = "steelblue") +
+  stat_qq_line(color = "red", linetype = "dashed") +
+  labs(
+    title = "Q-Q Plot of Stall Time",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+data |>
+  ggplot(aes(sample = c3sleff)) +
+  stat_qq(color = "steelblue") +
+  stat_qq_line(color = "red", linetype = "dashed") +
+  labs(
+    title = "Q-Q Plot of Stall Time",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+library(broom)
+library(gt)  # or use kableExtra
+
+# Run the test
+shapiro.test(na.omit(data$c3tstall))
+shapiro.test(na.omit(data$c3sleff))
+```
+
+## Correlation and Scatter Plots
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+
+data |>
+  ggplot(aes(x = c3tstall, y = c3sleff)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  stat_cor(method = "pearson", label.x = 300, label.y = 90) +  # Customize label position
+  labs(
+    title = "Scatter Plot with Correlation Coefficient",
+    x = "Stall Time (c3tstall)",
+    y = "Sleep Efficiency (c3sleff)"
+  ) +
+  theme_minimal()
+
+```

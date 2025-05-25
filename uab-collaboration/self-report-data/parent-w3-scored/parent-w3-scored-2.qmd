@@ -1,0 +1,30 @@
+---
+title: "parent w3 scored"
+format: html
+editor: visual
+---
+
+```{r}
+library(haven)
+
+data <- rio::import("~/Desktop/airbnb-listings.csv")
+
+```
+
+```{r}
+data |>
+  janitor::clean_names() |>
+  naniar::vis_miss()
+```
+
+```{r}
+data |>
+  janitor::clean_names() |>
+  naniar::gg_miss_upset()
+```
+
+```{r}
+library(corrr)
+
+mtcars
+```

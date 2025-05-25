@@ -1,0 +1,722 @@
+---
+
+---
+
+## Read Data
+
+```{r}
+library(tidyverse)
+
+data <- read_csv("w1-parent-scored.csv")
+```
+
+```{r}
+#| eval: false
+library(tidygeocoder)
+library(dplyr)
+library(ggplot2)
+library(maps)
+library(readr)
+
+# Load your CSV
+df <- read_csv("w1-parent-scored.csv")
+
+# Drop missing or blank entries
+locations <- df %>%
+  select(p1cpob) %>%
+  filter(!is.na(p1cpob), p1cpob != "") %>%
+  distinct()
+
+# Geocode using OpenStreetMap Nominatim (free and no API key required)
+geocoded <- locations %>%
+  geocode(p1cpob, method = "osm", lat = latitude, long = longitude)
+
+# Drop failed lookups
+geocoded_clean <- geocoded %>% filter(!is.na(latitude) & !is.na(longitude))
+
+# Plot on a world map
+world_map <- map_data("world")
+
+ggplot() +
+  geom_polygon(data = world_map, aes(x = long, y = lat, group = group),
+               fill = "lightgray", color = "white") +
+  geom_point(data = geocoded_clean, aes(x = longitude, y = latitude),
+             color = "red", size = 2, alpha = 0.7) +
+  coord_fixed(1.3) +
+  labs(title = "Locations from p1cpob", x = "Longitude", y = "Latitude") +
+  theme_minimal()
+
+```
+
+```{r}
+data |>
+  psych::describe()
+```
+
+## EDA
+
+### Descriptive Statistics
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(readr)
+
+# Load the data
+df <- read_csv("w1-parent-scored.csv")
+df <- df %>% select(-SID)
+
+# Pastel palette
+pastel_colors <- c("#AEC6CF", "#FFB347", "#B39EB5", "#77DD77", "#F49AC2")
+
+# Loop through columns and plot
+for (i in seq_along(df)) {
+  col_name <- names(df)[i]
+  color <- pastel_colors[(i - 1) %% length(pastel_colors) + 1]
+  
+  p <- ggplot(df, aes_string(x = col_name)) +
+    geom_density(fill = color, alpha = 0.7, color = "black", linewidth = 0.5) +  # Eyeliner, baby
+    labs(title = paste("Density Plot of", col_name)) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      axis.title.y = element_blank()
+    )
+  
+  print(p)
+}
+```
+
+```{r}
+shapiro_results <- df |>
+    select(where(is.numeric))|>
+  summarise(across(everything(), ~ list(shapiro.test(.x)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "test") |>
+  mutate(
+    statistic = map_dbl(test, ~ .x$statistic),
+    p_value = map_dbl(test, ~ .x$p.value)
+  ) |>
+  select(variable, statistic, p_value)
+
+shapiro_results
+```
+
+```{r, fig.width=12, fig.height=12}
+
+library(tidyverse)
+
+# Load your file
+df <- read_csv("w1-parent-scored.csv")
+
+# Compute correlations on numeric columns
+corr <- df |>
+  select(where(is.numeric)) |>
+  cor(use = "pairwise.complete.obs")  # safer for missing data
+
+# Convert to tidy format for plotting
+corr_df <- as.data.frame(as.table(corr))
+
+# Plot heatmap
+ggplot(corr_df, aes(Var1, Var2, fill = Freq)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  scale_fill_gradient2(
+    low = "#d0d1e6",
+    mid = "#f7f7f7",
+    high = "#1c9099",
+    midpoint = 0,
+    name = "Correlation"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 12),
+    axis.text.y = element_text(size = 12),
+    panel.grid = element_blank(),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16)
+  ) +
+  labs(
+    title = "Correlation Heatmap",
+    x = NULL,
+    y = NULL
+  ) +
+  coord_fixed()
+
+
+```
+
+## Parent Education Level Analysis
+
+```{r}
+library(ggplot2)
+
+# Load data
+df <- read.csv("w1-parent-scored.csv")
+
+# Variables to plot with human-friendly titles
+plot_vars <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+
+# Loop through and generate pastel violin plots without legend
+for (var in names(plot_vars)) {
+  title <- plot_vars[[var]]
+  p <- ggplot(df, aes(x = as.factor(p1edu1), y = .data[[var]], fill = as.factor(p1edu1))) +
+    geom_violin(trim = FALSE) +
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+      title = paste(title, "by Parent 1 Edu Level (", var, ")"),
+      x = "Parent 1 Education Level",
+      y = title
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  print(p)
+}
+
+```
+
+```{r}
+library(ggplot2)
+
+# Load data
+df <- read.csv("w1-parent-scored.csv")
+
+# Variables to plot with human-friendly titles
+plot_vars <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+
+# Loop through and generate pastel violin plots without legend
+for (var in names(plot_vars)) {
+  title <- plot_vars[[var]]
+  p <- ggplot(df, aes(x = as.factor(p1edu2), y = .data[[var]], fill = as.factor(p1edu2))) +
+    geom_violin(trim = FALSE) +
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+      title = paste(title, "by Parent 2 Edu Level (", var, ")"),
+      x = "Parent 1 Education Level",
+      y = title
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  print(p)
+}
+
+```
+
+## Parent Marital Status Analysis
+
+```{r}
+library(ggplot2)
+
+# Load data
+df <- read.csv("w1-parent-scored.csv")
+
+# Variables to plot with human-friendly titles
+plot_vars <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop through and generate pastel violin plots without legend
+for (var in names(plot_vars)) {
+  title <- plot_vars[[var]]
+  p <- ggplot(df, aes(x = as.factor(p1mar1), y = .data[[var]], fill = as.factor(p1mar1))) +
+    geom_violin(trim = FALSE) +
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+      title = paste(title, "by Mar Status (", var, ")"),
+      x = "Marital Status",
+      y = title
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  print(p)
+}
+```
+
+## Parent Employment Status Analysis
+
+```{r}
+library(ggplot2)
+
+# Load data
+df <- read.csv("w1-parent-scored.csv")
+
+# Variables to plot with human-friendly titles
+plot_vars <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop through and generate pastel violin plots without legend
+for (var in names(plot_vars)) {
+  title <- plot_vars[[var]]
+  p <- ggplot(df, aes(x = as.factor(p1emp1), y = .data[[var]], fill = as.factor(p1emp1))) +
+    geom_violin(trim = FALSE) +
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+      title = paste(title, "by Parent 1 Emp Status (", var, ")"),
+      x = "Emp Status",
+      y = title
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  print(p)
+}
+```
+
+```{r}
+library(ggplot2)
+
+# Load data
+df <- read.csv("w1-parent-scored.csv")
+
+# Variables to plot with human-friendly titles
+plot_vars <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop through and generate pastel violin plots without legend
+for (var in names(plot_vars)) {
+  title <- plot_vars[[var]]
+  p <- ggplot(df, aes(x = as.factor(p1emp2), y = .data[[var]], fill = as.factor(p1emp2))) +
+    geom_violin(trim = FALSE) +
+    geom_jitter(width = 0.2, alpha = 0.3, color = "black") +
+    scale_fill_brewer(palette = "Pastel1") +
+    labs(
+      title = paste(title, "by Parent 2 Emp Status (", var, ")"),
+      x = "Emp Status",
+      y = title
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none")
+  print(p)
+}
+```
+
+## ANOVA and Effect Size
+
+### ANOVA vs Education
+
+```{r}
+
+df <- read.csv("w1-parent-scored.csv")
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p1edu1)")), data = df))
+  print(result)
+}
+
+```
+
+```{r}
+
+df <- read.csv("w1-parent-scored.csv")
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p1edu2)")), data = df))
+  print(result)
+}
+```
+
+### ANOVA vs Marital Status
+
+```{r}
+
+df <- read.csv("w1-parent-scored.csv")
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p1mar1)")), data = df))
+  print(result)
+}
+```
+
+### ANOVA vs Employment
+
+```{r}
+
+df <- read.csv("w1-parent-scored.csv")
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p1emp1)")), data = df))
+  print(result)
+}
+```
+
+```{r}
+
+df <- read.csv("w1-parent-scored.csv")
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop through and print ANOVA summary for each
+for (var in names(psychometrics)) {
+  cat("\n--------------------------------------------\n")
+  cat("ANOVA for", psychometrics[[var]], "(", var, ")\n")
+  cat("--------------------------------------------\n")
+  
+  result <- summary(aov(as.formula(paste(var, "~ as.factor(p1edu2)")), data = df))
+  print(result)
+}
+```
+
+### Effect Size and Kruskal-Wallis vs Education
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("w1-parent-scored.csv")
+
+# Psychometric variables
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in names(psychometrics)) {
+  formula <- as.formula(paste(var, "~ as.factor(p1edu1)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", psychometrics[[var]], "(", var, ")\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+
+```
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("w1-parent-scored.csv")
+
+# Psychometric variables
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in names(psychometrics)) {
+  formula <- as.formula(paste(var, "~ as.factor(p1edu2)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", psychometrics[[var]], "(", var, ")\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+
+```
+
+### Effect Size and Kruskal-Wallis vs Marital Status
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("w1-parent-scored.csv")
+
+# Psychometric variables
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in names(psychometrics)) {
+  formula <- as.formula(paste(var, "~ as.factor(p1mar1)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", psychometrics[[var]], "(", var, ")\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+
+```
+
+### Effect Size and Kruskal-Wallis vs Employment
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("w1-parent-scored.csv")
+
+# Psychometric variables
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in names(psychometrics)) {
+  formula <- as.formula(paste(var, "~ as.factor(p1emp1)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", psychometrics[[var]], "(", var, ")\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+
+```
+
+```{r}
+library(effectsize)
+
+# Load data
+data <- read.csv("w1-parent-scored.csv")
+
+# Psychometric variables
+psychometrics <- list(
+  p1sp   = "Parental Support",
+  p1anxdp = "Anxiety/Depression",
+  p1wtd  = "Weighted Stress",
+  p1rbb  = "Risky Behavior Beliefs",
+  p1agg  = "Aggression",
+  p1smc  = "Social Media Concerns",
+  p1thpr = "Thought Problems",
+  p1atnpr = "Attention Problems",
+  p1pix  = "Parental Involvement Index",
+  p1ppx  = "Parental External Stress",
+  p1pmsx = "Monitoring Social Experience"
+)
+
+# Loop: run ANOVA and compute eta squared
+for (var in names(psychometrics)) {
+  formula <- as.formula(paste(var, "~ as.factor(p1emp2)"))
+  
+  # Run ANOVA
+  model <- aov(formula, data = data)
+  
+  # Eta Squared
+  eta <- eta_squared(model, partial = FALSE)
+  
+  # Kruskal-Wallis
+  kw_p <- kruskal.test(formula, data = data)$p.value
+  
+  cat("\n----------------------------------------\n")
+  cat("Results for", psychometrics[[var]], "(", var, ")\n")
+  cat("----------------------------------------\n")
+  print(eta)
+  cat("Kruskal-Wallis p-value:", round(kw_p, 4), "\n")
+}
+
+```
+
+## Unsupervised Learning
