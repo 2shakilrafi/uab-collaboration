@@ -1,3 +1,0 @@
-"0","data_profiled <- data_clean %>%"
-"0","  mutate(cluster = factor(final_kmeans$cluster))"
-"0",""
